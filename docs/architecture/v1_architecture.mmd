@@ -1,0 +1,9 @@
+flowchart LR
+    P([Player]) -->|types action| UI[Streamlit chat UI<br/>v1/app.py]
+    UI -->|full chat history| GM[game_master.py<br/>system prompt:<br/>room + puzzles + SOLUTIONS + rules]
+    GM -->|generate_content| LLM[(Google Gemini)]
+    LLM -->|story text,<br/>maybe ESCAPED tag| UI
+    UI -->|reply| P
+    SS[(st.session_state<br/>messages, escaped)] <--> UI
+    classDef risk fill:#fde2e1,stroke:#c0392b,color:#000;
+    class LLM risk
