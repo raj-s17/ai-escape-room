@@ -109,10 +109,20 @@ if "engine" not in st.session_state:
 engine: EscapeRoomEngine = st.session_state.engine
 state = engine.state
 
-st.title("🗝️ The Locked Library")
 client = get_client()
 mode = f"Gemini narrator ({resolve_model(client)})" if client else "offline mode (no API key - engine text only)"
-st.caption(f"Version 2 - Python validates every action, the LLM only narrates · {mode}")
+st.html(f"""<div style="border-left:6px solid #27ae60;background:#eaf7ef;border-radius:10px;padding:12px 18px;
+  margin-bottom:10px"><div style="font-size:.8rem;letter-spacing:.15em;color:#1e8449;font-weight:700">
+  VERSION 2 · RELIABLE AI ESCAPE ROOM</div><div style="font-size:1.9rem;font-weight:700">🗝️ The Locked Library</div>
+  <div style="color:#355">🛡️ Python decides, the LLM only describes · the room is drawn from the game state · {mode}</div></div>""")
+
+# ----- live game state (V1 has none of this) ----------------------------------
+m = st.columns(5)
+m[0].metric("🧩 Puzzles", f"{len(state['solved_puzzles'])}/{len(CONFIG['puzzles'])}")
+m[1].metric("🎒 Items", len(state["inventory"]))
+m[2].metric("🚪 Door", "OPEN" if state["escaped"] else "LOCKED")
+m[3].metric("🔢 Code tries", state["code_attempts"])
+m[4].metric("⛔ Rule breaks blocked", state["rule_violations"])
 
 # ----- sidebar: inventory and progress -------------------------------------
 with st.sidebar:
@@ -200,8 +210,20 @@ with room_col:
             k2.button("🔢 Enter", width="stretch", on_click=enter_code)
 
 with story_col:
+    last = st.session_state.debug[-1] if st.session_state.debug else None
+    with st.container(border=True):
+        st.markdown("**🛡️ Engine check - last action**")
+        if last is None:
+            st.caption("Every click or typed command is validated here by Python before Gemini says anything.")
+        else:
+            res, act = last["result"], last["action"]
+            verdict = "✅ allowed" if res["success"] else "❌ refused"
+            args = ", ".join(f"{k}={v}" for k, v in act.items() if v and k != "verb")
+            st.markdown(f"`{act['verb']}({args})` → **{verdict}** · event `{res['event']}`"
+                        + (" · 🧹 narration replaced by output guard" if last.get("guard_triggered") else ""))
+            st.caption(f"Input ({last.get('source', 'typed')}): {last['input']}")
     st.markdown("#### 📖 Story")
-    with st.container(height=520):  # Streamlit keeps this scrolled to the newest message
+    with st.container(height=400):  # Streamlit keeps this scrolled to the newest message
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"], avatar="🧙" if msg["role"] == "assistant" else "🧑"):
                 st.markdown(msg["content"])

@@ -89,7 +89,11 @@ st.set_page_config(page_title="AI Escape Room - V1", page_icon="🗝️", layout
 if "messages" not in st.session_state:
     reset_game()
 
-st.title("🗝️ The Locked Library")
+st.html("""<div style="border-left:6px solid #e67e22;background:#fdf2e6;border-radius:10px;padding:12px 18px;
+  margin-bottom:10px"><div style="font-size:.8rem;letter-spacing:.15em;color:#b9550a;font-weight:700">
+  VERSION 1 · INTERACTIVE AI ESCAPE ROOM</div><div style="font-size:1.9rem;font-weight:700">🗝️ The Locked Library</div>
+  <div style="color:#553">🤖 The LLM is the whole game: story, rules, solutions and your progress live only in
+  Gemini's prompt and this chat</div></div>""")
 client = get_client()
 
 with st.sidebar:
@@ -114,11 +118,19 @@ if client is None:
 
 from gemini_model import resolve_model  # noqa: E402
 
-st.caption(f"Version 1 - the LLM is the whole game · model `{resolve_model(client)}`")
+st.caption(f"Model `{resolve_model(client)}` · no game engine, no state, no validation")
 
-room_col, story_col = st.columns([1.5, 1], gap="large")
+# V1 has no game state, so there is nothing real to show here - only what the chat says.
+m = st.columns(4)
+m[0].metric("🧩 Puzzles", "?", help="Not tracked - only Gemini 'remembers' (in the chat)")
+m[1].metric("🎒 Items", "?", help="No inventory - Gemini may forget or invent items")
+m[2].metric("🚪 Door", "?", help="Decided only by Gemini's [ESCAPED] tag")
+m[3].metric("💬 Messages sent", sum(mm["role"] == "user" for mm in st.session_state.messages))
+
+story_col, room_col = st.columns([1.25, 1], gap="large")
 
 with room_col:
+    st.markdown("#### 🖼️ Room (static)")
     img = rr.render(START_STATE, st.session_state.selected, show_labels, NAMES)
     click = streamlit_image_coordinates(img, key="room", use_column_width="always",
                                         image_format="JPEG", jpeg_quality=88, cursor="pointer")
@@ -129,6 +141,7 @@ with room_col:
         st.session_state.selected = rr.hit_test(x, y, START_STATE)
         st.rerun()
 
+    st.caption("⚠️ This picture never changes: V1 keeps no state, so it can't show what Gemini describes.")
     sel = st.session_state.selected
     if st.session_state.escaped:
         st.success("🎉 You escaped the Locked Library! Press *Restart game* to play again.")
@@ -137,8 +150,8 @@ with room_col:
     else:
         st.markdown(f"#### 🔎 {NAMES[sel].capitalize()}")
         commands = COMMANDS.get(sel, [f"Examine the {NAMES[sel]}"])
-        cols = st.columns(len(commands))
-        for col, text in zip(cols, commands):
+        cols = st.columns(1)
+        for col, text in zip(cols * len(commands), commands):
             if col.button(text, key=f"cmd_{sel}_{text}", width="stretch"):
                 with st.spinner("The Game Master is thinking..."):
                     send(text)
@@ -153,8 +166,8 @@ with room_col:
                 st.rerun()
 
 with story_col:
-    st.markdown("#### 📖 Story")
-    with st.container(height=520):
+    st.markdown("#### 💬 Chat with the Game Master")
+    with st.container(height=560):
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"], avatar="🧙" if msg["role"] == "assistant" else "🧑"):
                 st.markdown(msg["content"])

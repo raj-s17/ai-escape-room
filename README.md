@@ -14,6 +14,7 @@ The project was built in the two required versions:
 | Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
 | How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
 | Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
+| What the screen shows | Orange "LLM only" banner, chat-first layout, state shown as **?** (puzzles, items, door unknown) | Green "Reliable" banner, live state (puzzles, items, door, code tries, blocked rule breaks) and an **engine check** for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
 | What the LLM does | Everything | Narrates the outcome the engine already decided |
 | Works without an API key | No | Yes (offline mode, engine text only) |
 
@@ -181,7 +182,7 @@ screenshot used scripted stand-in replies, because V1 cannot run without the LLM
 
 ### Version 1
 
-| Clicked objects send commands to Gemini - but the picture never changes |
+| V1: chat-first, state unknown (?), clicked objects send text to Gemini - the picture never changes |
 |---|
 | ![v1](docs/screenshots/v1_gameplay.png) |
 
