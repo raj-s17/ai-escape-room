@@ -82,7 +82,16 @@ class RuleParser:
             if re.search(pat, text):
                 return Action("meta")
 
+        text = re.sub(r"\b(take|have) a (closer )?look\b", "look", text)
         objects = self.find_objects(text)
+
+        # "take the crowbar out of my bag and break the door": the item being
+        # used is not part of this room, even though the door is. Report it.
+        if not any(self._is_item(o) for o in objects):
+            m = re.search(r"\b(?:use|shine|apply|insert|take|grab|pick up|collect)\s+"
+                          r"(?:out )?(?:the |my |a |an |this |that |some )?(\w+)", text)
+            if m and m.group(1) not in STOP_WORDS and not self._is_alias_word(m.group(1)):
+                return Action("unknown", raw_noun=m.group(1))
 
         # Any number typed -> code entry (the engine checks length and target).
         digits = re.search(r"\b\d+\b", text)
@@ -105,13 +114,6 @@ class RuleParser:
 
         if not objects:
             return Action("unknown", raw_noun=self._guess_noun(text, verb))
-
-        # "use the crowbar on the door": the thing being used is not part of
-        # this room, even though the door is. Report the unknown item.
-        if verb == "use" and not any(self._is_item(o) for o in objects):
-            m = re.search(r"\b(?:use|shine|point|apply|insert|put)\s+(?:the |my |a |an |this |that )?(\w+)", text)
-            if m and not self._is_alias_word(m.group(1)):
-                return Action("unknown", raw_noun=m.group(1))
 
         obj = objects[0]
         target = objects[1] if len(objects) > 1 else None
