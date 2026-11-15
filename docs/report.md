@@ -46,7 +46,7 @@ text. Because V1 has no state, the picture always shows the starting room,
 even after Gemini says the painting was taken down. Both versions share the
 same full-screen game layout: the room fills the window, actions appear next
 to the clicked object, the latest story line is shown as a subtitle and the
-full conversation opens from a 📜 button.
+full conversation opens from a story button.
 
 This version was quick to build and pleasant to play, because the model
 handles any phrasing and writes atmospheric descriptions. Testing it with the
@@ -110,7 +110,7 @@ storytelling**. Every message goes through a pipeline:
    Spin, a clickable keypad, *Use held item here*) send structured actions straight to
    the engine; typed commands still go through the parser. Inventory slots let
    the player hold an item and click where to use it, every action flashes a
-   ✅/❌ engine check, and a collapsed sidebar holds the raw JSON state and a
+   allowed/refused engine check, and a collapsed sidebar holds the raw JSON state and a
    debug view of the last parsed action.
    The debug view was very useful for explaining and testing the system.
 
