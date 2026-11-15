@@ -15,6 +15,7 @@ happens.
 Run:  streamlit run v1/app.py
 """
 
+import importlib
 import os
 import sys
 from pathlib import Path
@@ -30,6 +31,11 @@ sys.path.insert(0, str(ROOT))  # gemini_model.py, room_renderer.py (shared with 
 from game_master import ESCAPE_TAG, INTRO, ask_game_master  # noqa: E402
 import room_renderer as rr  # noqa: E402
 import ui_style as ui  # noqa: E402
+
+# The shared files live outside this folder, so Streamlit doesn't hot-reload them.
+# Reload them on every run so a running server never shows an outdated layout.
+rr = importlib.reload(rr)
+ui = importlib.reload(ui)
 
 load_dotenv(ROOT / ".env")
 

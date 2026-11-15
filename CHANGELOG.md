@@ -1,5 +1,8 @@
 # Changelog
 
+## Fix: stale layout on a running server
+- `v1/app.py` and `v2/app.py` reload the shared `ui_style.py` and `room_renderer.py` on every run. They live outside the app folders, so Streamlit did not hot-reload them and a running server could mix the new page with old styles.
+
 ## Layout "Option B"
 - Room as a large panel on the left, story always visible on the right (newest line at the bottom, older lines fade), inventory slots + command box below, hint / restart top right; actions still float next to the clicked object. One screen, no scrolling; dark theme only.
 

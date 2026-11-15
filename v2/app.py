@@ -17,6 +17,7 @@ Runs without an API key (offline mode: engine text only).
 Run:  streamlit run v2/app.py
 """
 
+import importlib
 import os
 import sys
 from pathlib import Path
@@ -34,6 +35,11 @@ from gemini_model import resolve_model  # noqa: E402
 from narrator import Narrator  # noqa: E402
 import room_renderer as rr  # noqa: E402
 import ui_style as ui  # noqa: E402
+
+# The shared files live outside this folder, so Streamlit doesn't hot-reload them.
+# Reload them on every run so a running server never shows an outdated layout.
+rr = importlib.reload(rr)
+ui = importlib.reload(ui)
 
 load_dotenv(ROOT / ".env")
 CONFIG = load_config()
