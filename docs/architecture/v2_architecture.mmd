@@ -1,15 +1,19 @@
 flowchart LR
-    P([Player]) -->|types action| UI[Streamlit UI<br/>v2/app.py]
-    UI --> PR[Action parser<br/>rules first]
+    P([Player]) -->|clicks object| IMG[Room picture]
+    IMG -->|x, y| HT[hit_test<br/>visible objects only]
+    HT --> BTN[Context buttons<br/>Examine, Take, Open,<br/>Use held item, keypad]
+    BTN -->|structured Action| EN
+    P -->|or types an action| PR[Action parser<br/>rules first]
     PR -.->|only if not understood| LP[(Gemini<br/>JSON intent parser)]
-    PR -->|Action verb/object/code| EN[Game engine<br/>game_engine.py<br/>validates + updates state]
+    PR -->|Action| EN[Game engine<br/>game_engine.py<br/>validates + updates state]
     CFG[[game_config.json<br/>objects, hints,<br/>solution]] --> EN
     EN <--> ST[(Game state dict<br/>inventory, flags,<br/>solved puzzles, door)]
     EN -->|Result + public state<br/>NO solutions| NA[Narrator]
     NA -->|describe this outcome| LLM[(Gemini)]
     LLM -->|narration| GD{Output guard}
-    GD -->|consistent| UI
-    GD -->|contradicts engine<br/>or leaks code| FB[Engine facts<br/>fallback text] --> UI
-    ST --> SB[Sidebar: inventory,<br/>puzzles, door, debug JSON]
+    GD -->|consistent| SP[Story panel]
+    GD -->|contradicts engine<br/>or leaks code| FB[Engine facts<br/>fallback text] --> SP
+    ST -->|redraw every turn| RR[room_renderer.render] --> IMG
+    ST --> SB[Sidebar: inventory,<br/>puzzles, door, JSON state]
     classDef trusted fill:#e3f4e8,stroke:#27ae60,color:#000;
-    class EN,ST,CFG,GD trusted
+    class EN,ST,CFG,GD,HT trusted

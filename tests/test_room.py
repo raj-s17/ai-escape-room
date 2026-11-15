@@ -1,9 +1,9 @@
-"""Tests for the Version 3 point-and-click layer (no API key needed)."""
+"""Tests for the clickable room picture used by V1 and V2 (no API key needed)."""
 
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "v3"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import room_renderer as rr  # noqa: E402
 from action_parser import RuleParser  # noqa: E402

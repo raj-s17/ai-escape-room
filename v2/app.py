@@ -1,18 +1,18 @@
 """
 AI Escape Room - Version 2 (Reliable AI Escape Room)
 
-Pipeline for every player message:
-
-    player text --> Parser --> Action --> GameEngine (validates, updates state)
-                                              |
-                                              v
-                    Narrator (Gemini) <-- Result + public state
-                         |
-                         v
-                  output guard --> chat reply
-
-Python decides; the LLM only describes. Runs without an API key too
-("offline mode"), in which case the engine's own text is shown.
+Python decides, the LLM describes:
+  * the game state is a structured dict and every action is validated by
+    game_engine.py against game_config.json (inventory, flags, puzzles, door),
+  * the room is drawn with Pillow (room_renderer.py) from that state on every
+    turn, so the picture can never disagree with the game,
+  * clicking an object shows the actions that make sense for it; each button
+    builds a structured Action that goes straight into the engine,
+  * typed natural-language commands go through action_parser.py (rules first,
+    Gemini JSON only as a fallback) into the same engine,
+  * narrator.py lets Gemini describe the outcome; its output guard rejects any
+    narration that contradicts the engine or leaks the code.
+Runs without an API key (offline mode: engine text only).
 
 Run:  streamlit run v2/app.py
 """
@@ -23,16 +23,21 @@ from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit_image_coordinates import streamlit_image_coordinates
 
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent))  # for gemini_model.py
-from game_engine import EscapeRoomEngine, load_config  # noqa: E402
-from narrator import Narrator  # noqa: E402
+sys.path.insert(0, str(ROOT))                  # gemini_model.py, room_renderer.py (shared with V1)
 from action_parser import RuleParser, llm_parse  # noqa: E402
+from game_engine import Action, EscapeRoomEngine, load_config  # noqa: E402
 from gemini_model import resolve_model  # noqa: E402
+from narrator import Narrator  # noqa: E402
+import room_renderer as rr  # noqa: E402
 
-load_dotenv()
+load_dotenv(ROOT / ".env")
 CONFIG = load_config()
+NAMES = {oid: o["name"] for oid, o in CONFIG["objects"].items()}
+ITEM_ICONS = {"note": "📜", "brass_key": "🗝️", "uv_flashlight": "🔦", "torn_page": "📄"}
 
 
 @st.cache_resource
@@ -44,98 +49,165 @@ def get_client():
     return genai.Client(api_key=key)
 
 
+# ---------------------------------------------------------------------------
+# Game session helpers
+# ---------------------------------------------------------------------------
 def reset_game():
     st.session_state.engine = EscapeRoomEngine(CONFIG)
-    st.session_state.messages = [{"role": "assistant", "content": CONFIG["intro"]}]
+    st.session_state.messages = [{"role": "assistant", "content": CONFIG["intro"]
+                                  + "\n\n*Click anything in the room to interact with it.*"}]
     st.session_state.debug = []
+    st.session_state.selected = None
+    st.session_state.held = None
+    st.session_state.last_click = None
 
 
-def process(message: str) -> str:
-    engine: EscapeRoomEngine = st.session_state.engine
+def run_action(action: Action, player_text: str, source: str = "click"):
+    """Send a structured action to the engine and narrate the result."""
+    engine = st.session_state.engine
     client = get_client()
     model = resolve_model(client) if client else None
-    action = RuleParser(CONFIG).parse(message)
-    used_llm_parser = False
-    if action.verb == "unknown" and not action.raw_noun and client is not None:
-        llm_action = llm_parse(client, model, message, list(CONFIG["objects"].keys()))
-        if llm_action is not None:
-            action, used_llm_parser = llm_action, True
-
     result = engine.handle(action)
     narrator = Narrator(engine, client, model)
-    reply = narrator.narrate(message, result, st.session_state.messages)
+    reply = narrator.narrate(player_text, result, st.session_state.messages)
+    st.session_state.messages.append({"role": "user", "content": player_text})
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.debug.append({"input": player_text, "source": source, "action": action.to_dict(),
+                                   "result": result.to_dict(), "guard_triggered": narrator.last_guard_triggered})
+    # Drop the selection if the object just went into the inventory.
+    if st.session_state.selected in engine.state["inventory"]:
+        st.session_state.selected = None
+    if st.session_state.held and st.session_state.held not in engine.state["inventory"]:
+        st.session_state.held = None
 
-    st.session_state.debug.append({
-        "message": message,
-        "action": action.to_dict(),
-        "parser": "llm" if used_llm_parser else "rules",
-        "result": result.to_dict(),
-        "guard_triggered": narrator.last_guard_triggered,
-    })
-    return reply
+
+def run_text(text: str):
+    """Typed natural-language command: same pipeline as Version 2."""
+    client = get_client()
+    action = RuleParser(CONFIG).parse(text)
+    if action.verb == "unknown" and not action.raw_noun and client is not None:
+        action = llm_parse(client, resolve_model(client), text, list(CONFIG["objects"])) or action
+    run_action(action, text, source="typed")
+
+
+def enter_code():
+    code = st.session_state.get("keypad", "").strip()
+    st.session_state.keypad = ""
+    run_action(Action("enter_code", "door", code=code), f"🔢 Enter {code or '(nothing)'} on the keypad")
+
+
+def hold(item):
+    st.session_state.held = None if st.session_state.held == item else item
 
 
 # ---------------------------------------------------------------------------
-# UI
+# Page
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="AI Escape Room - V2", page_icon="🔐", layout="wide")
+st.set_page_config(page_title="AI Escape Room - V2", page_icon="🗝️", layout="wide")
 if "engine" not in st.session_state:
     reset_game()
 engine: EscapeRoomEngine = st.session_state.engine
 state = engine.state
 
-st.title("🔐 The Locked Library")
-mode = f"Gemini narrator ({resolve_model(get_client())})" if get_client() else "offline mode (no API key - engine text only)"
-st.caption(f"Version 2 - Python validates every action, the LLM narrates · {mode}")
+st.title("🗝️ The Locked Library")
+client = get_client()
+mode = f"Gemini narrator ({resolve_model(client)})" if client else "offline mode (no API key - engine text only)"
+st.caption(f"Version 2 - Python validates every action, the LLM only narrates · {mode}")
 
+# ----- sidebar: inventory and progress -------------------------------------
 with st.sidebar:
-    st.header("How to play")
-    st.markdown(
-        "Type actions in plain English, e.g. *examine the desk*, *look behind the painting*, "
-        "*take the key*, *use the key on the drawer*, *enter 1234 on the door*. "
-        "Type **hint** if you are stuck or **help** for commands."
-    )
-    if st.button("🔄 Restart game", use_container_width=True):
-        reset_game()
-        st.rerun()
+    st.header("🎒 Inventory")
+    if not state["inventory"]:
+        st.caption("Empty - click items in the room to pick them up.")
+    for item in state["inventory"]:
+        c1, c2, c3 = st.columns([2.4, 1, 1])
+        held = st.session_state.held == item
+        c1.markdown(f"{ITEM_ICONS.get(item, '•')} **{NAMES[item]}**" + (" *(held)*" if held else ""))
+        c2.button("🔍", key=f"inv_x_{item}", help=f"Examine the {NAMES[item]}",
+                  on_click=run_action, args=(Action("examine", item), f"🔍 Examine the {NAMES[item]}"))
+        c3.button("↩️" if held else "✋", key=f"inv_h_{item}", on_click=hold, args=(item,),
+                  help="Put it away" if held else "Hold it, then click an object in the room to use it there")
+    if st.session_state.held:
+        st.info(f"Holding the **{NAMES[st.session_state.held]}**. Click an object in the room to use it there.")
 
     st.divider()
-    st.subheader("🎒 Inventory")
-    st.write(", ".join(engine.name(o) for o in state["inventory"]) or "_empty_")
-
     st.subheader("🧩 Puzzles")
-    st.markdown("\n".join(
-        f"- {'✅' if pid in state['solved_puzzles'] else '⬜'} {desc}"
-        for pid, desc in CONFIG["puzzles"].items()))
+    st.markdown("\n".join(f"- {'✅' if p in state['solved_puzzles'] else '⬜'} {d}"
+                          for p, d in CONFIG["puzzles"].items()))
     st.progress(len(state["solved_puzzles"]) / len(CONFIG["puzzles"]))
+    st.write("🚪 Door: " + ("🟢 open" if state["escaped"] else "🔴 locked"))
+    st.caption(f"Turn {state['turn']} · code tries {state['code_attempts']} · rule breaks {state['rule_violations']}")
 
-    st.subheader("🚪 Door")
-    st.write("🟢 Open - you escaped!" if state["escaped"] else "🔴 Locked")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Turn", state["turn"])
-    c2.metric("Code tries", state["code_attempts"])
-    c3.metric("Rule breaks", state["rule_violations"])
-
+    st.divider()
+    show_labels = st.toggle("Show object labels", value=False)
+    c1, c2 = st.columns(2)
+    c1.button("💡 Hint", width="stretch", on_click=run_action, args=(Action("hint"), "💡 Hint please"))
+    if c2.button("🔄 Restart", width="stretch"):
+        reset_game()
+        st.rerun()
     with st.expander("🛠 Game state (JSON)"):
         st.json({k: v for k, v in state.items() if k != "history"})
     with st.expander("🔍 Last action (debug)"):
         st.json(st.session_state.debug[-1] if st.session_state.debug else {})
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"], avatar="🧙" if msg["role"] == "assistant" else "🧑"):
-        st.markdown(msg["content"])
+# ----- main area: room + actions | story -----------------------------------
+room_col, story_col = st.columns([1.5, 1], gap="large")
 
-if state["escaped"]:
-    st.success(f"🎉 You escaped the Locked Library in {state['turn']} turns! Press *Restart game* to play again.")
-    if not st.session_state.get("celebrated"):
-        st.balloons()
-        st.session_state.celebrated = True
-else:
-    st.session_state.celebrated = False
+with room_col:
+    img = rr.render(state, st.session_state.selected, show_labels, NAMES, CONFIG["season_numbers"])
+    click = streamlit_image_coordinates(img, key="room", use_column_width="always",
+                                        image_format="JPEG", jpeg_quality=88, cursor="pointer")
+    if click and click.get("unix_time") != st.session_state.last_click:
+        st.session_state.last_click = click.get("unix_time")
+        x = click["x"] * rr.W / click["width"]
+        y = click["y"] * rr.H / click["height"]
+        st.session_state.selected = rr.hit_test(x, y, state)
+        st.rerun()
 
-if prompt := st.chat_input("What do you do?", disabled=state["escaped"]):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    sel = st.session_state.selected
+    if state["escaped"]:
+        st.success(f"🎉 You escaped the Locked Library in {state['turn']} turns! Press **Restart** to play again.")
+        if not st.session_state.get("celebrated"):
+            st.balloons()
+            st.session_state.celebrated = True
+    elif sel is None:
+        st.caption("👆 Click an object in the room. Tip: hold an inventory item, then click where to use it.")
+    else:
+        st.session_state.celebrated = False
+        name = NAMES[sel]
+        st.markdown(f"#### {ITEM_ICONS.get(sel, '🔎')} {name.capitalize()}")
+        buttons = [("🔍 Examine", Action("examine", sel), f"🔍 Examine the {name}")]
+        if sel == "painting" and not state["flags"]["painting_moved"]:
+            buttons.append(("🖼️ Look behind", Action("move", sel), "🖼️ Look behind the painting"))
+        if CONFIG["objects"][sel]["takeable"] and sel not in state["inventory"]:
+            buttons.append(("✋ Take", Action("take", sel), f"✋ Take the {name}"))
+        if sel in ("drawer", "door"):
+            buttons.append(("🔓 Open", Action("open", sel), f"🔓 Open the {name}"))
+        if sel == "globe":
+            buttons.append(("🌍 Spin", Action("move", sel), "🌍 Spin the globe"))
+        held = st.session_state.held
+        if held and held != sel:
+            buttons.append((f"{ITEM_ICONS.get(held, '')} Use {NAMES[held]} here",
+                            Action("use", held, sel), f"{ITEM_ICONS.get(held, '')} Use the {NAMES[held]} on the {name}"))
+        cols = st.columns(len(buttons))
+        for col, (label, action, text) in zip(cols, buttons):
+            col.button(label, key=f"act_{sel}_{label}", width="stretch",
+                       on_click=run_action, args=(action, text))
+        if sel == "door":
+            k1, k2 = st.columns([3, 1])
+            k1.text_input("Keypad", key="keypad", max_chars=4, placeholder="4-digit code",
+                          label_visibility="collapsed")
+            k2.button("🔢 Enter", width="stretch", on_click=enter_code)
+
+with story_col:
+    st.markdown("#### 📖 Story")
+    with st.container(height=520):  # Streamlit keeps this scrolled to the newest message
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"], avatar="🧙" if msg["role"] == "assistant" else "🧑"):
+                st.markdown(msg["content"])
+
+if typed := st.chat_input("...or type what you do, e.g. 'shine the flashlight on the books'",
+                          disabled=state["escaped"]):
     with st.spinner("The Game Master is thinking..."):
-        reply = process(prompt)
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+        run_text(typed)
     st.rerun()

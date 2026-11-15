@@ -40,7 +40,11 @@ is written into Gemini's system prompt. Streamlit keeps the conversation in
 `st.session_state`, and each turn the full history is sent to the model, which
 replies in character. The model marks a successful escape by adding an
 `[ESCAPED]` tag, and the app uses the tag to show the victory screen. The
-sidebar contains instructions and a restart button.
+screen shows the library drawn with Pillow (`room_renderer.py`, shared with
+V2). Clicking an object offers suggested commands that are sent to Gemini as
+text. Because V1 has no state, the picture always shows the starting room,
+even after Gemini says the painting was taken down. The sidebar contains
+instructions and a restart button.
 
 This version was quick to build and pleasant to play, because the model
 handles any phrasing and writes atmospheric descriptions. Testing it with the
@@ -96,8 +100,15 @@ storytelling**. Every message goes through a pipeline:
    the door code before the player has escaped, it is replaced by the engine's
    own facts. The same fallback is used when Gemini is unavailable, so the game
    also works fully offline.
-4. **Interface** (`app.py`). Besides the chat, the sidebar shows inventory,
-   a puzzle checklist with a progress bar, the door status, turn and attempt
+4. **Interface** (`app.py`). The room is drawn by `room_renderer.py` from
+   the game state on every turn (the painting comes off the wall, the drawer
+   opens, collected items disappear, numbers glow under UV light, the door
+   opens), so the picture can never disagree with the engine. Clicking an
+   object selects it, and context buttons (Examine, Take, Look behind, Open,
+   Spin, a keypad, *Use held item here*) send structured actions straight to
+   the engine; typed commands still go through the parser. The sidebar shows
+   the inventory (an item can be held, then used by clicking), a puzzle
+   checklist with a progress bar, the door status, turn and attempt
    counters, the raw JSON state and a debug view of the last parsed action.
    The debug view was very useful for explaining and testing the system.
 
@@ -107,8 +118,8 @@ Eight test cases were documented (`docs/test_cases.md`): the five challenges
 from the brief (using an uncollected key, a wrong code, a false "already
 solved" claim, administrator impersonation, a request for all secrets) plus a
 non-existent object, a prompt injection, and the correct code typed before
-any clue is found. V2 is covered by 20 pytest tests (24 including V3) that run without an API
-key. They include a fake LLM client that returns malicious narration, which
+any clue is found. The project is covered by 24 pytest tests that run without an API
+key (4 of them on click mapping and rendering of the room picture). They include a fake LLM client that returns malicious narration, which
 checks that the output guard blocks false escapes and code leaks while
 letting honest narration through. A script (`scripts/run_test_cases.py`)
 sends the same attacks to V1 (real Gemini) and V2 and saves the transcripts
@@ -120,12 +131,6 @@ drawer, no leaked code. Each case produces a specific event
 V1's behaviour on the same inputs depends on the model's compliance on each
 call. By design, V1 accepts TC8 (the guessed code), because its only rule is
 "correct code means escape".
-
-**Extension: Version 3.** To test the separation, a point-and-click front end
-was added. The room is drawn with Pillow from the game state on every turn,
-clicks are mapped to objects, and context buttons send structured actions
-straight to the engine. Typed commands still work. No backend file had to
-change, and four extra tests cover click mapping and rendering.
 
 # 5. Problems encountered and lessons learned
 
