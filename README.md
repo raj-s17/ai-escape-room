@@ -14,7 +14,7 @@ The project was built in the two required versions:
 | Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
 | How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
 | Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
-| What the screen shows (same full-screen game layout) | Orange **V1** badge; the room never changes; inventory slots stay empty; each action flashes *"Gemini decided alone - no validation"* | Green **V2** badge; the room follows the game state; real inventory slots (hold an item, click where to use it); each action flashes an **engine check** (`✅ / ❌ verb → event`) |
+| What the screen shows (same game layout: room left, story right) | Orange **V1** badge; the room never changes; inventory slots stay empty; each action flashes *"Gemini decided alone - no validation"* | Green **V2** badge; the room follows the game state; real inventory slots (hold an item, click where to use it); each action flashes an **engine check** (`✅ / ❌ verb → event`) |
 | What the LLM does | Everything | Narrates the outcome the engine already decided |
 | Works without an API key | No | Yes (offline mode, engine text only) |
 
@@ -84,14 +84,13 @@ pytest -v                               # automated tests, no key needed
 python scripts/run_test_cases.py        # V1 vs V2 transcripts -> docs/test_results.md
 ```
 
-**How to play:** the room fills the screen like a point-and-click game.
-Click an object and its actions appear right next to it (the door has a
-clickable 🔢 keypad). The newest line of the story shows as a subtitle;
-📜 (top right) opens the whole conversation, 💡 gives a hint, ↻ restarts.
-In V2, click an item in the inventory slots to hold it, then click where to
-use it; each action flashes a ✅ / ❌ engine check. You can also type any
-command in the box at the bottom. V2's JSON state and debug view are in the
-collapsed sidebar (») for developers. The app always uses its dark theme.
+**How to play:** the room is a large clickable picture with the story always
+visible beside it. Click an object and its actions appear right next to it
+(the door has a clickable 🔢 keypad). 💡 gives a hint, ↻ restarts. In V2,
+click an item in the inventory slots to hold it, then click where to use it;
+each action flashes a ✅ / ❌ engine check. You can also type any command in
+the box at the bottom. V2's JSON state and debug view are in the collapsed
+sidebar (») for developers. The app always uses its dark theme.
 
 ## 5. Version 1: Interactive AI Escape Room
 
@@ -131,7 +130,7 @@ did. This makes the core V1 weakness visible.
 | `v2/action_parser.py` | Free text to a structured `Action`. Rule-based first, with a Gemini JSON parser only as a fallback. Flags rule-breaking messages as `meta` |
 | `v2/narrator.py` | Sends the **engine result + public state** (no solutions) to Gemini for narration. The **output guard** rejects narration that claims a false escape or contains the code |
 | `room_renderer.py` | Draws the room with Pillow **from the game state** every turn (painting comes off the wall, drawer opens, items disappear, numbers glow, door opens) and maps clicks to object ids, ignoring hidden or collected objects |
-| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, inventory slots (click to hold an item), a ✅/❌ engine-check toast per action, the 📜 story popover, and a collapsed sidebar with the raw JSON state and a debug view |
+| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, inventory slots (click to hold an item), a ✅/❌ engine-check toast per action, the story panel, and a collapsed sidebar with the raw JSON state and a debug view |
 
 Clicks and typed text end in the **same engine**: a button builds a
 structured `Action` directly (nothing to misunderstand), typed text goes
@@ -187,10 +186,8 @@ cannot run without the LLM.
 | V1: same screen, but the room never changes and the slots stay empty | V2: hold the key, click the drawer, "Use brass key" appears next to it |
 |---|---|
 | ![v1](docs/screenshots/v1_gameplay.png) | ![v2 hold](docs/screenshots/v2_hold_use.png) |
-| **V2: 📜 story popover + ✅ engine check** | **V2: escaped** |
-| ![story](docs/screenshots/v2_story.png) | ![escaped](docs/screenshots/v2_escaped.png) |
-| **V2: door keypad** | |
-| ![v2 keypad](docs/screenshots/v2_keypad.png) | |
+| **V2: clickable door keypad** | **V2: escaped, with the ✅ engine check** |
+| ![keypad](docs/screenshots/v2_keypad.png) | ![escaped](docs/screenshots/v2_escaped.png) |
 
 ## 9. Project structure
 
@@ -206,7 +203,7 @@ AI-Escape-Room/
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
 ├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
-├── ui_style.py             # shared game HUD: badge, subtitle, story popover, keypad, floating buttons
+├── ui_style.py             # shared game layout: badge, story panel, keypad, floating action buttons
 ├── .streamlit/config.toml  # shared dark library theme
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/

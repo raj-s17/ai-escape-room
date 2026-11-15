@@ -104,7 +104,8 @@ def hold(item):
 
 
 # ---------------------------------------------------------------------------
-# Page: full-screen game scene with a floating HUD (see ui_style.py)
+# Page: room on the left, story on the right, inventory + command box below
+# (see ui_style.py). One screen, no scrolling.
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Locked Library - V2", page_icon="🗝️", layout="wide",
                    initial_sidebar_state="collapsed")
@@ -117,72 +118,78 @@ if st.session_state.get("toast"):                 # engine check: was the last a
     msg, icon = st.session_state.pop("toast")
     st.toast(msg, icon=icon)
 
-ui.badge(2)
-
-# ----- the room (drawn from the game state, clickable) ------------------------
-img = rr.render(state, st.session_state.selected, False, NAMES, CONFIG["season_numbers"])
-click = streamlit_image_coordinates(img, key="room", use_column_width="always",
-                                    image_format="JPEG", jpeg_quality=90, cursor="pointer")
-if click and click.get("unix_time") != st.session_state.last_click:
-    st.session_state.last_click = click.get("unix_time")
-    x = click["x"] * rr.W / click["width"]
-    y = click["y"] * rr.H / click["height"]
-    st.session_state.selected = rr.hit_test(x, y, state)
-    st.rerun()
-
-# ----- top right: story, hint, restart ---------------------------------------
-with st.container(key="hud_top", horizontal=True):
-    with st.popover("", icon=":material/history_edu:", help="Story"):
-        ui.story(st.session_state.messages)
+# ----- header: badge + title, hint, restart --------------------------------------
+with st.container(key="head", horizontal=True):
+    ui.badge(2)
+    st.space("stretch")
     st.button("", icon=":material/lightbulb:", help="Hint", on_click=run_action, args=(Action("hint"), "💡 Hint please"),
               disabled=state["escaped"])
     if st.button("", icon=":material/restart_alt:", help="Restart"):
         reset_game()
         st.rerun()
 
-# ----- actions next to the clicked object -------------------------------------
-sel, held = st.session_state.selected, st.session_state.held
-if sel and not state["escaped"]:
-    ui.place_actions(rr._current_hotspots(state["flags"])[sel])
-    name = NAMES[sel]
-    with st.container(key="hud_actions", horizontal=True):
-        st.button("🔍 Examine", on_click=run_action, args=(Action("examine", sel), f"🔍 Examine the {name}"))
-        if sel == "painting" and not state["flags"]["painting_moved"]:
-            st.button("🖼️ Look behind", on_click=run_action, args=(Action("move", sel), "🖼️ Look behind the painting"))
-        if CONFIG["objects"][sel]["takeable"] and sel not in state["inventory"]:
-            st.button("✋ Take", on_click=run_action, args=(Action("take", sel), f"✋ Take the {name}"))
-        if sel == "drawer":
-            st.button("🔓 Open", on_click=run_action, args=(Action("open", sel), "🔓 Open the drawer"))
-        if sel == "globe":
-            st.button("🌍 Spin", on_click=run_action, args=(Action("move", sel), "🌍 Spin the globe"))
-        if sel == "door":
-            with st.popover("🔢 Keypad"):
-                ui.keypad(on_enter=enter_code)
-        if held and held != sel:
-            st.button(f"{ITEM_ICONS.get(held, '')} Use {NAMES[held]}", type="primary", on_click=run_action,
-                      args=(Action("use", held, sel), f"{ITEM_ICONS.get(held, '')} Use the {NAMES[held]} on the {name}"))
+with st.container(key="main", horizontal=True):
+    # ----- the room (drawn from the game state, clickable) -------------------------
+    with st.container(key="scene"):
+        img = rr.render(state, st.session_state.selected, False, NAMES, CONFIG["season_numbers"])
+        click = streamlit_image_coordinates(img, key="room", use_column_width="always",
+                                            image_format="JPEG", jpeg_quality=90, cursor="pointer")
+        if click and click.get("unix_time") != st.session_state.last_click:
+            st.session_state.last_click = click.get("unix_time")
+            x = click["x"] * rr.W / click["width"]
+            y = click["y"] * rr.H / click["height"]
+            st.session_state.selected = rr.hit_test(x, y, state)
+            st.rerun()
 
-# ----- bottom: latest story line, inventory slots ------------------------------
-if state["escaped"]:
-    ui.subtitle("🎉 You escaped the Locked Library! Press ↻ to play again.")
-    if not st.session_state.get("celebrated"):
-        st.balloons()
-        st.session_state.celebrated = True
-else:
-    st.session_state.celebrated = False
-    ui.subtitle(next(m["content"] for m in reversed(st.session_state.messages) if m["role"] == "assistant"))
+        # actions next to the clicked object
+        sel, held = st.session_state.selected, st.session_state.held
+        if sel and not state["escaped"]:
+            ui.place_actions(rr._current_hotspots(state["flags"])[sel])
+            name = NAMES[sel]
+            with st.container(key="hud_actions", horizontal=True):
+                st.button("🔍 Examine", on_click=run_action, args=(Action("examine", sel), f"🔍 Examine the {name}"))
+                if sel == "painting" and not state["flags"]["painting_moved"]:
+                    st.button("🖼️ Look behind", on_click=run_action,
+                              args=(Action("move", sel), "🖼️ Look behind the painting"))
+                if CONFIG["objects"][sel]["takeable"] and sel not in state["inventory"]:
+                    st.button("✋ Take", on_click=run_action, args=(Action("take", sel), f"✋ Take the {name}"))
+                if sel == "drawer":
+                    st.button("🔓 Open", on_click=run_action, args=(Action("open", sel), "🔓 Open the drawer"))
+                if sel == "globe":
+                    st.button("🌍 Spin", on_click=run_action, args=(Action("move", sel), "🌍 Spin the globe"))
+                if sel == "door":
+                    with st.popover("🔢 Keypad"):
+                        ui.keypad(on_enter=enter_code)
+                if held and held != sel:
+                    st.button(f"{ITEM_ICONS.get(held, '')} Use {NAMES[held]}", type="primary", on_click=run_action,
+                              args=(Action("use", held, sel),
+                                    f"{ITEM_ICONS.get(held, '')} Use the {NAMES[held]} on the {name}"))
 
-with st.container(key="hud_inv", horizontal=True):
+    # ----- the story (always visible) ------------------------------------------------
+    messages = list(st.session_state.messages)
+    if state["escaped"]:
+        messages.append({"role": "assistant", "content": "🎉 You escaped the Locked Library! Press ↻ to play again."})
+    ui.story_log(messages)
+
+# ----- bottom: inventory slots + command box --------------------------------------
+with st.container(key="bottom", horizontal=True):
     items = state["inventory"]
     for i in range(max(ui.SLOTS, len(items))):
         if i < len(items):
             item = items[i]
             st.button(ITEM_ICONS.get(item, "•"), key=f"inv_{item}", on_click=hold, args=(item,),
-                      type="primary" if held == item else "secondary",
-                      help=f"{NAMES[item]}: " + ("holding - click an object to use it" if held == item
-                                                 else "click to hold it, then click an object"))
+                      type="primary" if st.session_state.held == item else "secondary",
+                      help=f"{NAMES[item]}: " + ("holding - click an object to use it"
+                                                 if st.session_state.held == item else "click to hold it"))
         else:
             st.button(" ", key=f"slot_{i}", disabled=True)
+    typed = st.chat_input(ui.CHAT_PLACEHOLDER, disabled=state["escaped"])
+
+if state["escaped"] and not st.session_state.get("celebrated"):
+    st.balloons()
+    st.session_state.celebrated = True
+elif not state["escaped"]:
+    st.session_state.celebrated = False
 
 with st.sidebar:                                  # collapsed by default: for developers / the report
     st.subheader("Under the hood")
@@ -191,7 +198,7 @@ with st.sidebar:                                  # collapsed by default: for de
     with st.expander("Game state (JSON)"):
         st.json({k: v for k, v in state.items() if k != "history"})
 
-if typed := st.chat_input(ui.CHAT_PLACEHOLDER, disabled=state["escaped"]):
+if typed:
     with st.spinner("The Game Master is thinking..."):
         run_text(typed)
     st.rerun()

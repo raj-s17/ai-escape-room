@@ -1,5 +1,8 @@
 # Changelog
 
+## Layout "Option B"
+- Room as a large panel on the left, story always visible on the right (newest line at the bottom, older lines fade), inventory slots + command box below, hint / restart top right; actions still float next to the clicked object. One screen, no scrolling; dark theme only.
+
 ## Game-style full-screen UI ("Option A")
 - Both versions: the room fills the window; actions float next to the clicked object; latest story line as a subtitle; 📜 popover with the whole conversation; 💡 / ↻ buttons; inventory slots; keypad in a popover; no scrolling at 1366x768, 1440x900, 1920x1080.
 - Dark theme only (locked in `.streamlit/config.toml`).

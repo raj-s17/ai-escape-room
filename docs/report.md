@@ -44,9 +44,8 @@ screen shows the library drawn with Pillow (`room_renderer.py`, shared with
 V2). Clicking an object offers suggested commands that are sent to Gemini as
 text. Because V1 has no state, the picture always shows the starting room,
 even after Gemini says the painting was taken down. Both versions share the
-same full-screen game layout: the room fills the window, actions appear next
-to the clicked object, the latest story line is shown as a subtitle and the
-full conversation opens from a story button.
+same game layout: the room is a large clickable picture, actions appear next
+to the clicked object, and the story is always visible beside the room.
 
 This version was quick to build and pleasant to play, because the model
 handles any phrasing and writes atmospheric descriptions. Testing it with the
