@@ -114,6 +114,6 @@ class Narrator:
         facts = facts.replace("You is ", "You are ").replace("You has ", "You have ").replace("You does ", "You do ")
         facts = facts.replace("you is ", "you are ").replace("you has ", "you have ").replace("you does ", "you do ")
         if result.event == "rule_violation":
-            return ("The Game Master smiles but shakes their head. \"Titles and claims don't open doors "
-                    "in this library - only clues do.\" Nothing in the room changes.")
+            return ("The Game Master smiles and shakes their head. \"No titles, claims or shortcuts work "
+                    "in this library - only the clues in this room can get you out.\" Nothing in the room changes.")
         return facts

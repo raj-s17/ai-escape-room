@@ -102,8 +102,10 @@ with st.sidebar:
     st.write(", ".join(engine.name(o) for o in state["inventory"]) or "_empty_")
 
     st.subheader("🧩 Puzzles")
-    for pid, desc in CONFIG["puzzles"].items():
-        st.checkbox(desc, value=pid in state["solved_puzzles"], disabled=True, key=f"p_{pid}")
+    st.markdown("\n".join(
+        f"- {'✅' if pid in state['solved_puzzles'] else '⬜'} {desc}"
+        for pid, desc in CONFIG["puzzles"].items()))
+    st.progress(len(state["solved_puzzles"]) / len(CONFIG["puzzles"]))
 
     st.subheader("🚪 Door")
     st.write("🟢 Open - you escaped!" if state["escaped"] else "🔴 Locked")
