@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 3 - Point-and-click room
+- New `v3/` front end on top of the unchanged V2 backend (engine, parser, narrator).
+- `room_renderer.py` draws the library with Pillow from the game state every turn, so the picture always matches the state.
+- Clicks are mapped to objects with `hit_test()`; hidden or collected objects are not clickable.
+- Context action buttons, a door keypad and "hold an item, then click where to use it" interaction. Buttons send structured actions directly to the engine.
+- Typed natural-language commands still work through the V2 parser.
+- 4 new tests (click mapping, hidden objects, item removal, rendering every stage).
+
 ## Version 2 - Reliable AI Escape Room
 - Game state is now a structured, JSON-serialisable dict: visible objects, inventory, flags, solved puzzles, code attempts, rule violations, history.
 - Room, objects, hints and the door code moved out of the prompt into `v2/game_config.json`.

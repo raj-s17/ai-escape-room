@@ -1,0 +1,16 @@
+flowchart LR
+    P([Player]) -->|clicks object| IMG[Room picture<br/>streamlit-image-coordinates]
+    P -->|or types a command| CH[Chat input]
+    IMG -->|x, y| HT[hit_test<br/>room_renderer.py]
+    HT -->|selected object| BTN[Context action buttons<br/>Examine / Take / Open /<br/>Use held item / Keypad]
+    BTN -->|structured Action| EN
+    CH --> PR[V2 action parser] -->|Action| EN[V2 game engine<br/>unchanged]
+    EN <--> ST[(Game state dict)]
+    EN -->|Result, no solutions| NA[V2 narrator + output guard] <--> LLM[(Gemini)]
+    NA -->|story text| SP[Story panel]
+    ST -->|redraw| RR[room_renderer.render<br/>Pillow] --> IMG
+    ST --> SB[Sidebar: inventory,<br/>puzzles, door]
+    classDef trusted fill:#e3f4e8,stroke:#27ae60,color:#000;
+    classDef new fill:#e6efff,stroke:#2f6fd1,color:#000;
+    class EN,ST trusted
+    class IMG,HT,BTN,RR new

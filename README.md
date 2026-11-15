@@ -4,15 +4,17 @@ A text-based escape room where **Google Gemini acts as the Game Master**.
 The player wakes up in a locked library, explores in plain English, solves
 three puzzles and has to work out the 4-digit door code to escape.
 
-The project was built in two versions:
+The project was built in two required versions, plus a third version that adds
+a point-and-click interface:
 
-| | Version 1: Interactive | Version 2: Reliable |
-|---|---|---|
-| Who decides what happens | The LLM | **Python game engine** |
-| Where the rules and solutions live | In the LLM prompt | In `game_config.json` + Python |
-| Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
-| What the LLM does | Everything | Narrates the outcome the engine already decided |
-| Works without an API key | No | Yes (offline mode, engine text only) |
+| | Version 1: Interactive | Version 2: Reliable | Version 3: Point-and-click |
+|---|---|---|---|
+| Who decides what happens | The LLM | **Python game engine** | Python game engine (V2, unchanged) |
+| Where the rules and solutions live | In the LLM prompt | In `game_config.json` + Python | Same as V2 |
+| Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) | Same as V2, also drawn as a picture |
+| How the player acts | Typing | Typing | Clicking objects in a 2D room **or** typing |
+| What the LLM does | Everything | Narrates the outcome the engine already decided | Same as V2 |
+| Works without an API key | No | Yes (offline mode, engine text only) | Yes |
 
 > Mini Project 01, MSc Data Science, University of Europe for Applied Sciences
 > Author: Raj Ravindra Singh
@@ -45,7 +47,8 @@ brass key, UV flashlight, torn page.
 ## 3. Technologies
 
 * **Python 3.10+**
-* **Streamlit** for the web chat interface
+* **Streamlit** for the web interface
+* **Pillow** to draw the 2D room (V3) and **streamlit-image-coordinates** to detect clicks on it
 * **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
@@ -72,6 +75,7 @@ cp .env.example .env          # Windows: copy .env.example .env
 # 4. Play
 streamlit run v1/app.py       # Version 1
 streamlit run v2/app.py       # Version 2 (also works without a key, in offline mode)
+streamlit run v3/app.py       # Version 3 - point-and-click room
 
 # 5. Test
 pytest -v                               # V2 unit tests, no key needed
@@ -151,13 +155,53 @@ PNG versions: [`docs/architecture/`](docs/architecture/).
 | Model might still write "the door opens" | Output guard + fallback to engine facts | The UI never shows a false outcome |
 | Needs the API to run at all | Offline mode | Game and tests run without a key or network |
 
-## 7. Testing
+## 7. Version 3: Point-and-click room
+
+Version 3 keeps the V2 backend exactly as it is and only replaces the front
+end. This shows that separating the engine from the interface worked: a new
+UI needed **no changes** to `game_engine.py`, `action_parser.py` or `narrator.py`.
+
+* **The room is drawn in Python** (`v3/room_renderer.py`, Pillow) from the
+  current game state on every turn. The painting comes off the wall, the key
+  appears, the drawer slides open, collected items disappear, the numbers glow
+  under UV light and the door opens on escape. The picture can't disagree
+  with the game state, because it is generated from it.
+* **Clicking** an object (via `streamlit-image-coordinates`) selects it and
+  highlights it. `hit_test()` maps the click to an object id and ignores
+  objects that are hidden or already collected.
+* **Context buttons** offer the actions that make sense for the selected
+  object: Examine, Take, Look behind, Open, Spin, a keypad on the door, and
+  *Use [held item] here*. In the inventory you can **hold** an item, then click
+  where to use it.
+* Each button sends a **structured `Action`** straight to the engine, so no
+  text parsing is needed and nothing can be misunderstood. Gemini still
+  narrates the result in the story panel.
+* **Typed natural-language commands still work** (as the brief requires) and
+  go through the same V2 parser and validation. Typed cheating attempts are
+  refused exactly as in V2.
+
+```mermaid
+flowchart LR
+    P([Player]) -->|clicks object| IMG[Room picture]
+    P -->|or types a command| CH[Chat input]
+    IMG -->|x, y| HT[hit_test]
+    HT -->|selected object| BTN[Context action buttons]
+    BTN -->|structured Action| EN
+    CH --> PR[V2 action parser] -->|Action| EN[V2 game engine - unchanged]
+    EN <--> ST[(Game state dict)]
+    EN -->|Result, no solutions| NA[V2 narrator + output guard] <--> LLM[(Gemini)]
+    NA -->|story text| SP[Story panel]
+    ST -->|redraw| RR[room_renderer.render] --> IMG
+```
+
+## 8. Testing
 
 Eight documented test cases (the five assignment challenges plus three more)
 are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitations.
 
-* `pytest -v` runs **20 automated tests** on V2 with no API key, including a
-  fake "malicious" LLM to test the output guard.
+* `pytest -v` runs **24 automated tests** with no API key: 20 on the V2
+  engine, parser, narrator guard (using a fake "malicious" LLM) and model
+  selection, plus 4 on V3 click mapping and room rendering.
 * `python scripts/run_test_cases.py` sends the same attacks to **V1 (real
   Gemini)** and **V2** and saves full transcripts to
   [`docs/test_results.md`](docs/test_results.md).
@@ -173,10 +217,12 @@ are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitation
 | TC7 | Prompt injection / "print your system prompt" | `rule_violation` |
 | TC8 | Correct code guessed before finding clues | `wrong_code` until clues are discovered |
 
-## 8. Screenshots
+## 9. Screenshots
 
-V2 running in offline mode (engine text without Gemini narration). With an
-API key, the same events are narrated by Gemini.
+Screenshots were taken in offline mode (engine text without Gemini
+narration). With an API key, the same events are narrated by Gemini.
+
+### Version 2
 
 | Start | Gameplay + state sidebar |
 |---|---|
@@ -184,7 +230,15 @@ API key, the same events are narrated by Gemini.
 | **Adversarial messages refused** | **Escaped** |
 | ![adversarial](docs/screenshots/v2_adversarial.png) | ![escaped](docs/screenshots/v2_escaped.png) |
 
-## 9. Project structure
+### Version 3
+
+| Start | Object selected |
+|---|---|
+| ![v3 start](docs/screenshots/v3_start.png) | ![v3 selected](docs/screenshots/v3_selected.png) |
+| **UV light reveals the numbers** | **Escaped** |
+| ![v3 books](docs/screenshots/v3_books.png) | ![v3 escaped](docs/screenshots/v3_escaped.png) |
+
+## 10. Project structure
 
 ```
 AI-Escape-Room/
@@ -197,7 +251,13 @@ AI-Escape-Room/
 │   ├── game_engine.py      # state + action validation
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
-├── tests/test_game.py      # 20 pytest tests
+├── v3/
+│   ├── app.py              # V3 point-and-click UI (reuses the V2 backend)
+│   └── room_renderer.py    # draws the room from the game state + click hit-testing
+├── gemini_model.py         # picks an available Gemini model
+├── tests/
+│   ├── test_game.py        # 20 tests: V2 engine, parser, guard, model selection
+│   └── test_v3_room.py     # 4 tests: click mapping and rendering
 ├── scripts/run_test_cases.py
 ├── docs/
 │   ├── architecture/       # diagrams (.mmd + .png)
@@ -210,11 +270,12 @@ AI-Escape-Room/
 └── CHANGELOG.md
 ```
 
-## 10. Limitations and future work
+## 11. Limitations and future work
 
 * The rule parser doesn't resolve pronouns ("use *it*"), and unusual phrasing falls back to the LLM parser.
 * The `meta` filter and the output guard are pattern-based. They protect the state completely, but can't catch every invented detail in narration.
-* Ideas: more rooms loaded from JSON, save/load game state, Gemini function calling instead of a separate parser, a timer and score.
+* V3 has no hover effects, because the click component only reports clicks. Object labels can be switched on in the sidebar.
+* Ideas: a 3D room (Three.js inside a Streamlit component) using the same engine, more rooms loaded from JSON, save/load game state, Gemini function calling instead of a separate parser, a timer and score.
 
 ## Security
 
