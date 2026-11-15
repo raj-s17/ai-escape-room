@@ -14,7 +14,7 @@ The project was built in the two required versions:
 | Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
 | How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
 | Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
-| What the screen shows (same theme and layout) | Orange banner; status row shows **?** / **-** (nothing is tracked); a "Who decided" card: *Gemini alone, no validation* | Green banner; live status row (items, door, code tries, blocked rule breaks); an **engine check** card for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
+| What the screen shows (same minimal one-screen layout) | Orange header with **?** chips (nothing is tracked); a "Who decided" line: *Gemini alone, no validation* | Green header with live chips (items, door, code tries, blocked rule breaks); an **engine check** line for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
 | What the LLM does | Everything | Narrates the outcome the engine already decided |
 | Works without an API key | No | Yes (offline mode, engine text only) |
 
@@ -84,11 +84,13 @@ pytest -v                               # automated tests, no key needed
 python scripts/run_test_cases.py        # V1 vs V2 transcripts -> docs/test_results.md
 ```
 
-**How to play:** click an object in the room and choose an action, click one of the *Try a command* buttons in the sidebar, use the clickable door keypad, or type
-things like *examine the desk*, *look behind the painting*, *take the key*,
-*use the key on the drawer*, *shine the flashlight on the books*, *enter 1234
-on the door*. In V2 you can also **hold** an inventory item and click where to
-use it. Type `hint` when stuck or `help` for commands. **Restart** is in the sidebar.
+**How to play:** everything fits on one screen. Click an object in the room
+and choose an action, use the clickable keypad on the door, or type things
+like *look behind the painting*, *use the key on the drawer*, *shine the
+flashlight on the books*. In V2, click an item in the 🎒 row to **hold** it,
+then click where to use it. 💡 (hint) and ↻ (restart) are next to the header.
+V2's raw JSON state and debug view are in the collapsed sidebar (») for
+developers.
 
 ## 5. Version 1: Interactive AI Escape Room
 
@@ -128,7 +130,7 @@ did. This makes the core V1 weakness visible.
 | `v2/action_parser.py` | Free text to a structured `Action`. Rule-based first, with a Gemini JSON parser only as a fallback. Flags rule-breaking messages as `meta` |
 | `v2/narrator.py` | Sends the **engine result + public state** (no solutions) to Gemini for narration. The **output guard** rejects narration that claims a false escape or contains the code |
 | `room_renderer.py` | Draws the room with Pillow **from the game state** every turn (painting comes off the wall, drawer opens, items disappear, numbers glow, door opens) and maps clicks to object ids, ignoring hidden or collected objects |
-| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, and a sidebar with inventory (hold items), door status, counters, raw JSON state and a debug view |
+| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, an inventory row (click to hold an item), header chips with the live state, and a collapsed sidebar with the raw JSON state and a debug view |
 
 Clicks and typed text end in the **same engine**: a button builds a
 structured `Action` directly (nothing to misunderstand), typed text goes
@@ -197,7 +199,7 @@ screenshot used scripted stand-in replies, because V1 cannot run without the LLM
 | **Escaped** | |
 | ![escaped](docs/screenshots/v2_escaped.png) | |
 
-### Dark mode
+### Dark mode (both versions follow the light / dark theme)
 
 | V1 | V2 with the clickable door keypad |
 |---|---|
@@ -211,13 +213,13 @@ AI-Escape-Room/
 │   ├── app.py              # V1 Streamlit UI (static room picture + chat)
 │   └── game_master.py      # V1 prompt (incl. solutions) + Gemini call
 ├── v2/
-│   ├── app.py              # V2 UI: clickable room, context buttons, story, state sidebar
+│   ├── app.py              # V2 UI: clickable room, actions, keypad, inventory row, story, engine check
 │   ├── game_config.json    # room, objects, hints, solution
 │   ├── game_engine.py      # state + action validation
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
 ├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
-├── ui_style.py             # shared look + widgets: header, status row, story, keypad, example commands
+├── ui_style.py             # shared minimal look: header, engine/LLM check line, story, keypad
 ├── .streamlit/config.toml  # shared library theme (light + dark)
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/
@@ -239,7 +241,8 @@ AI-Escape-Room/
 
 * The rule parser doesn't resolve pronouns ("use *it*"), and unusual phrasing falls back to the LLM parser.
 * The `meta` filter and the output guard are pattern-based. They protect the state completely, but can't catch every invented detail in narration.
-* The room has no hover effects, because the click component only reports clicks. Object labels can be switched on in the sidebar.
+* The room has no hover effects, because the click component only reports clicks; object labels are always shown instead.
+* The one-screen layout is tuned for laptop screens (1366×768 and larger); very small windows still scroll.
 * Ideas: a 3D room (Three.js inside a Streamlit component) using the same engine, more rooms loaded from JSON, save/load game state, Gemini function calling instead of a separate parser, a timer and score.
 
 ## Security

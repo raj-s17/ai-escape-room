@@ -1,5 +1,9 @@
 # Changelog
 
+## Minimal one-screen UI
+- Both versions fit on one screen without scrolling (checked at 1366×768, 1440×900, 1920×1080, light and dark).
+- One-line header with state chips and 💡 / ↻ buttons; compact keypad; V2 inventory row (click to hold); the "Try a command" list, status cards, theme tip and labels toggle were removed; V2's JSON/debug moved to the collapsed sidebar.
+
 ## Light/dark theme and more interaction
 - `.streamlit/config.toml` defines a light and a dark library palette; custom styles use theme-independent tints, so both versions look the same in either mode.
 - Clickable door keypad (digits, delete, enter) in V1 and V2 instead of a text box.

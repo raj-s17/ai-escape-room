@@ -15,6 +15,7 @@ happens.
 Run:  streamlit run v1/app.py
 """
 
+import html
 import os
 import sys
 from pathlib import Path
@@ -87,57 +88,36 @@ def send(text: str):
 
 
 # ---------------------------------------------------------------------------
-# Page (same layout as V2; the differences are the real ones)
+# Page: same minimal layout as V2; the differences are the real ones
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="Locked Library - V1", page_icon="🗝️", layout="wide")
+st.set_page_config(page_title="Locked Library - V1", page_icon="🗝️", layout="wide",
+                   initial_sidebar_state="collapsed")
 ui.apply_style()
 if "messages" not in st.session_state:
     reset_game()
 client = get_client()
 
-with st.sidebar:
-    st.caption(ui.HOW_TO_PLAY)
-    st.header("🎒 Inventory")
-    st.caption("Not tracked in Version 1. Only Gemini \"remembers\" what you carry, in the chat.")
-    st.divider()
-    ui.quick_commands(ui.EXAMPLES, on_pick=send, disabled=client is None or st.session_state.escaped)
-    st.divider()
-    show_labels = st.toggle("Show object labels", value=True)
-    c1, c2 = st.columns(2)
-    hint = c1.button("💡 Hint", width="stretch", disabled=client is None)
-    if c2.button("🔄 Restart", width="stretch"):
-        reset_game()
-        st.rerun()
-    st.warning("Version 1: Gemini is the whole game. No inventory, no state, no validation, and the room picture "
-            "never changes. Version 2 fixes that.")
-    st.caption(ui.THEME_TIP)
+head, b_hint, b_restart = st.columns([12, 1, 1], vertical_alignment="center")
+with head:
+    ui.header(1, "Gemini is the whole game", ["🎒 ?", "🚪 ?", "no state tracked"])
+hint = b_hint.button("💡", help="Hint", width="stretch", disabled=client is None or st.session_state.escaped)
+if b_restart.button("↻", help="Restart", width="stretch"):
+    reset_game()
+    st.rerun()
 
 if client is None:
-    ui.header(1, "🤖 The LLM is the whole game: story, rules, solutions and progress live only in the chat.",
-              "No GEMINI_API_KEY found")
     st.error("No GEMINI_API_KEY found. Copy `.env.example` to `.env` and add your free key from Google AI "
              "Studio. (Version 2 also runs offline.)")
     st.stop()
-
-from gemini_model import resolve_model  # noqa: E402
-
-ui.header(1, "🤖 The LLM is the whole game: story, rules, solutions and progress live only in the chat.",
-          f"Gemini game master: {resolve_model(client)} · no game engine, no state, no validation")
-ui.status_row("?", "?", "-", "-", notes={
-    "🎒 Items": "No inventory: Gemini may forget or invent items",
-    "🚪 Door": "Decided only by Gemini writing the [ESCAPED] tag",
-    "🔢 Code tries": "Not counted in V1",
-    "⛔ Rule breaks blocked": "Nothing blocks them in V1: Gemini decides on its own"})
-
 if hint:
     with st.spinner("The Game Master is thinking..."):
         send("I'm stuck. Can you give me a hint?")
     st.rerun()
 
-room_col, story_col = st.columns([1.5, 1], gap="large")
+room_col, story_col = st.columns([1.3, 1], gap="medium")
 
 with room_col:
-    img = rr.render(START_STATE, st.session_state.selected, show_labels, NAMES)
+    img = rr.render(START_STATE, st.session_state.selected, True, NAMES)
     click = streamlit_image_coordinates(img, key="room", use_column_width="always",
                                         image_format="JPEG", jpeg_quality=88, cursor="pointer")
     if click and click.get("unix_time") != st.session_state.last_click:
@@ -151,32 +131,21 @@ with room_col:
     if st.session_state.escaped:
         st.success(ui.ESCAPED)
     elif sel is None:
-        st.caption("👆 Click an object in the room. ⚠️ In V1 this picture never changes: nothing tracks the game.")
+        st.caption("👆 Click an object in the room. (In V1 this picture never changes: nothing tracks the game.)")
     else:
-        st.markdown(f"#### 🔎 {NAMES[sel].capitalize()}")
         commands = COMMANDS.get(sel, [f"Examine the {NAMES[sel]}"])
-        cols = st.columns(len(commands))
-        for col, text in zip(cols, commands):
-            if col.button(text, key=f"cmd_{sel}_{text}", width="stretch"):
-                with st.spinner("The Game Master is thinking..."):
-                    send(text)
-                st.rerun()
+        cols = st.columns([1.2] + [1.6] * len(commands), vertical_alignment="center")
+        cols[0].markdown(f"#### {NAMES[sel].capitalize()}")
+        for col, text in zip(cols[1:], commands):
+            col.button(text, key=f"cmd_{sel}_{text}", width="stretch", on_click=send, args=(text,))
         if sel == "door":
-            _, pad, _ = st.columns([1, 1.4, 1])
-            with pad:
-                ui.keypad(on_enter=lambda code: send(f"I enter {code} on the door keypad."),
-                          disabled=st.session_state.escaped)
+            ui.keypad(on_enter=lambda code: send(f"I enter {code} on the door keypad."))
 
 with story_col:
     last = st.session_state.get("last_turn")
-    with st.container(border=True):
-        st.markdown("**🤖 Who decided · last action**")
-        if last is None:
-            st.caption("In V1 nothing checks your actions: Gemini alone decides what happens.")
-        else:
-            st.markdown("Gemini alone · **no validation**" + (" · ended the game with `[ESCAPED]`"
-                                                              if last["escaped"] else ""))
-            st.caption(f"Input: {last['input']}")
+    ui.check(1, "🤖 <b>Who decided</b> · Gemini alone, <b>no validation</b>"
+                + (f" · <i>{html.escape(last['input'])}</i>" if last else "")
+                + (" · ended the game with <code>[ESCAPED]</code>" if last and last["escaped"] else ""))
     ui.story(st.session_state.messages)
 
 if typed := st.chat_input(ui.CHAT_PLACEHOLDER, disabled=st.session_state.escaped):

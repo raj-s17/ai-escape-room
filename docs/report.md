@@ -43,8 +43,8 @@ replies in character. The model marks a successful escape by adding an
 screen shows the library drawn with Pillow (`room_renderer.py`, shared with
 V2). Clicking an object offers suggested commands that are sent to Gemini as
 text. Because V1 has no state, the picture always shows the starting room,
-even after Gemini says the painting was taken down. The sidebar contains
-instructions and a restart button.
+even after Gemini says the painting was taken down. Both versions share a
+minimal one-screen layout with a hint and a restart button next to the header.
 
 This version was quick to build and pleasant to play, because the model
 handles any phrasing and writes atmospheric descriptions. Testing it with the
@@ -106,9 +106,10 @@ storytelling**. Every message goes through a pipeline:
    opens), so the picture can never disagree with the engine. Clicking an
    object selects it, and context buttons (Examine, Take, Look behind, Open,
    Spin, a clickable keypad, *Use held item here*) send structured actions straight to
-   the engine; typed commands still go through the parser. The sidebar shows
-   the inventory (an item can be held, then used by clicking), the door status, turn and attempt
-   counters, the raw JSON state and a debug view of the last parsed action.
+   the engine; typed commands still go through the parser. An inventory row
+   lets the player hold an item and click where to use it, header chips show
+   the live state, and a collapsed sidebar holds the raw JSON state and a
+   debug view of the last parsed action.
    The debug view was very useful for explaining and testing the system.
 
 # 4. Testing
@@ -142,7 +143,7 @@ call. By design, V1 accepts TC8 (the guessed code), because its only rule is
   already have the key" as cheating, even when the player really had it.
   Claims about *items* are now passed to the engine, which checks the
   inventory. Only claims about *solved puzzles or opened locks* are refused.
-* **Spoilers in the UI.** A puzzle checklist in the sidebar named every step
+* **Spoilers in the UI.** An early puzzle checklist named every step
   ("find the brass key behind the painting"), which gave the solutions away.
   It was removed; puzzle progress is still tracked in the JSON game state.
 * **Gemini conversation format.** The model expects the conversation to start

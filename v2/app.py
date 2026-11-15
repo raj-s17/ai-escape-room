@@ -17,6 +17,7 @@ Runs without an API key (offline mode: engine text only).
 Run:  streamlit run v2/app.py
 """
 
+import html
 import os
 import sys
 from pathlib import Path
@@ -101,60 +102,33 @@ def hold(item):
 
 
 # ---------------------------------------------------------------------------
-# Page
+# Page: one screen, no scrolling
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="Locked Library - V2", page_icon="🗝️", layout="wide")
+st.set_page_config(page_title="Locked Library - V2", page_icon="🗝️", layout="wide",
+                   initial_sidebar_state="collapsed")
 ui.apply_style()
 if "engine" not in st.session_state:
     reset_game()
 engine: EscapeRoomEngine = st.session_state.engine
 state = engine.state
-
 client = get_client()
-mode = f"Gemini narrator: {resolve_model(client)}" if client else "Offline mode: no API key, engine text only"
-ui.header(2, "🛡️ Python decides, the LLM only describes. The room is drawn from the game state.", mode)
 
-# ----- live game state (V1 shows '?' here: it has no state) -------------------
-ui.status_row(len(state["inventory"]), "OPEN" if state["escaped"] else "LOCKED",
-              state["code_attempts"], state["rule_violations"])
+# ----- header: version, live state, hint, restart -----------------------------
+head, b_hint, b_restart = st.columns([12, 1, 1], vertical_alignment="center")
+with head:
+    ui.header(2, "Python decides, the LLM describes" + ("" if client else " · offline"),
+              [f"🎒 {len(state['inventory'])}", "🚪 " + ("open" if state["escaped"] else "locked"),
+               f"🔢 {state['code_attempts']} tries", f"⛔ {state['rule_violations']} blocked"])
+b_hint.button("💡", help="Hint", width="stretch", on_click=run_action, args=(Action("hint"), "💡 Hint please"),
+              disabled=state["escaped"])
+if b_restart.button("↻", help="Restart", width="stretch"):
+    reset_game()
+    st.rerun()
 
-# ----- sidebar: inventory and progress -------------------------------------
-with st.sidebar:
-    st.caption(ui.HOW_TO_PLAY)
-    st.header("🎒 Inventory")
-    if not state["inventory"]:
-        st.caption("Empty - click items in the room to pick them up.")
-    for item in state["inventory"]:
-        c1, c2, c3 = st.columns([2.4, 1, 1])
-        held = st.session_state.held == item
-        c1.markdown(f"{ITEM_ICONS.get(item, '•')} **{NAMES[item]}**" + (" *(held)*" if held else ""))
-        c2.button("🔍", key=f"inv_x_{item}", help=f"Examine the {NAMES[item]}",
-                  on_click=run_action, args=(Action("examine", item), f"🔍 Examine the {NAMES[item]}"))
-        c3.button("↩️" if held else "✋", key=f"inv_h_{item}", on_click=hold, args=(item,),
-                  help="Put it away" if held else "Hold it, then click an object in the room to use it there")
-    if st.session_state.held:
-        st.info(f"Holding the **{NAMES[st.session_state.held]}**. Click an object in the room to use it there.")
-
-    st.divider()
-    ui.quick_commands(ui.EXAMPLES, on_pick=run_text, disabled=state["escaped"])
-    st.divider()
-    show_labels = st.toggle("Show object labels", value=True)
-    c1, c2 = st.columns(2)
-    c1.button("💡 Hint", width="stretch", on_click=run_action, args=(Action("hint"), "💡 Hint please"))
-    if c2.button("🔄 Restart", width="stretch"):
-        reset_game()
-        st.rerun()
-    with st.expander("🛠 Game state (JSON)"):
-        st.json({k: v for k, v in state.items() if k != "history"})
-    with st.expander("🔍 Last action (debug)"):
-        st.json(st.session_state.debug[-1] if st.session_state.debug else {})
-    st.caption(ui.THEME_TIP)
-
-# ----- main area: room + actions | story -----------------------------------
-room_col, story_col = st.columns([1.5, 1], gap="large")
+room_col, story_col = st.columns([1.3, 1], gap="medium")
 
 with room_col:
-    img = rr.render(state, st.session_state.selected, show_labels, NAMES, CONFIG["season_numbers"])
+    img = rr.render(state, st.session_state.selected, True, NAMES, CONFIG["season_numbers"])
     click = streamlit_image_coordinates(img, key="room", use_column_width="always",
                                         image_format="JPEG", jpeg_quality=88, cursor="pointer")
     if click and click.get("unix_time") != st.session_state.last_click:
@@ -164,57 +138,66 @@ with room_col:
         st.session_state.selected = rr.hit_test(x, y, state)
         st.rerun()
 
-    sel = st.session_state.selected
+    sel, held = st.session_state.selected, st.session_state.held
     if state["escaped"]:
         st.success(ui.ESCAPED)
         if not st.session_state.get("celebrated"):
             st.balloons()
             st.session_state.celebrated = True
     elif sel is None:
-        st.caption("👆 Click an object in the room. Tip: hold an inventory item (✋), then click where to use it.")
+        st.caption("👆 Click an object in the room" + (f" to use the {NAMES[held]} on it." if held else "."))
     else:
         st.session_state.celebrated = False
         name = NAMES[sel]
-        st.markdown(f"#### 🔎 {name.capitalize()}")
         buttons = [("🔍 Examine", Action("examine", sel), f"🔍 Examine the {name}")]
         if sel == "painting" and not state["flags"]["painting_moved"]:
             buttons.append(("🖼️ Look behind", Action("move", sel), "🖼️ Look behind the painting"))
         if CONFIG["objects"][sel]["takeable"] and sel not in state["inventory"]:
             buttons.append(("✋ Take", Action("take", sel), f"✋ Take the {name}"))
-        if sel in ("drawer", "door"):
+        if sel == "drawer":
             buttons.append(("🔓 Open", Action("open", sel), f"🔓 Open the {name}"))
         if sel == "globe":
             buttons.append(("🌍 Spin", Action("move", sel), "🌍 Spin the globe"))
-        held = st.session_state.held
         if held and held != sel:
-            buttons.append((f"{ITEM_ICONS.get(held, '')} Use {NAMES[held]} here",
-                            Action("use", held, sel), f"{ITEM_ICONS.get(held, '')} Use the {NAMES[held]} on the {name}"))
-        cols = st.columns(len(buttons))
-        for col, (label, action, text) in zip(cols, buttons):
-            col.button(label, key=f"act_{sel}_{label}", width="stretch",
-                       on_click=run_action, args=(action, text))
+            buttons.append((f"{ITEM_ICONS.get(held, '')} Use {NAMES[held]}", Action("use", held, sel),
+                            f"{ITEM_ICONS.get(held, '')} Use the {NAMES[held]} on the {name}"))
+        cols = st.columns([1.2] + [1] * len(buttons), vertical_alignment="center")
+        cols[0].markdown(f"#### {name.capitalize()}")
+        for col, (label, action, text) in zip(cols[1:], buttons):
+            col.button(label, key=f"act_{sel}_{label}", width="stretch", on_click=run_action, args=(action, text))
         if sel == "door":
-            _, pad, _ = st.columns([1, 1.4, 1])
-            with pad:
-                ui.keypad(on_enter=enter_code, disabled=state["escaped"])
+            ui.keypad(on_enter=enter_code)
+
+    # inventory: click an item to hold it, then click where to use it
+    if state["inventory"]:
+        cols = st.columns([0.5] + [1] * len(state["inventory"]), vertical_alignment="center")
+        cols[0].markdown("🎒")
+        for col, item in zip(cols[1:], state["inventory"]):
+            col.button(("✅ " if held == item else ITEM_ICONS.get(item, "") + " ") + NAMES[item],
+                       key=f"inv_{item}", width="stretch", on_click=hold, args=(item,),
+                       type="primary" if held == item else "secondary",
+                       help="Holding - click an object to use it there" if held == item else "Click to hold it")
 
 with story_col:
     last = st.session_state.debug[-1] if st.session_state.debug else None
-    with st.container(border=True):
-        st.markdown("**🛡️ Engine check · last action**")
-        if last is None:
-            st.caption("Every click or typed command is validated here by Python before Gemini says anything.")
-        else:
-            res, act = last["result"], last["action"]
-            verdict = "✅ allowed" if res["success"] else "❌ refused"
-            args = ", ".join(f"{k}={v}" for k, v in act.items() if v and k != "verb")
-            st.markdown(f"`{act['verb']}({args})` → **{verdict}** · event `{res['event']}`"
-                        + (" · 🧹 narration replaced by output guard" if last.get("guard_triggered") else ""))
-            st.caption(f"Input ({last.get('source', 'typed')}): {last['input']}")
+    if last is None:
+        ui.check(2, "🛡️ <b>Engine check</b> · every action is validated by Python before Gemini narrates.")
+    else:
+        res, act = last["result"], last["action"]
+        args = html.escape(", ".join(f"{k}={v}" for k, v in act.items() if v and k != "verb"))
+        ui.check(2, f"🛡️ <b>Engine check</b> · <code>{act['verb']}({args})</code> → "
+                    + ("✅ <b>allowed</b>" if res["success"] else "❌ <b>refused</b>")
+                    + f" · <code>{res['event']}</code>" + (" · 🧹 guard" if last.get("guard_triggered") else ""))
     ui.story(st.session_state.messages)
 
-if typed := st.chat_input(ui.CHAT_PLACEHOLDER,
-                          disabled=state["escaped"]):
+with st.sidebar:                                  # collapsed by default: for developers / the report
+    st.subheader("Under the hood")
+    with st.expander("Game state (JSON)", expanded=True):
+        st.json({k: v for k, v in state.items() if k != "history"})
+    with st.expander("Last action (debug)"):
+        st.json(st.session_state.debug[-1] if st.session_state.debug else {})
+
+if typed := st.chat_input(ui.CHAT_PLACEHOLDER, disabled=state["escaped"]):
     with st.spinner("The Game Master is thinking..."):
         run_text(typed)
     st.rerun()
