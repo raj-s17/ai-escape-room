@@ -1,0 +1,110 @@
+{
+  "title": "The Locked Library",
+  "intro": "You wake up on a cold wooden floor. Candlelight flickers across rows of old books. The door is locked, and a small keypad glows next to the handle. Somewhere in this library is the way out...",
+  "room_description": "A dusty private library at night. A single barred window lets in moonlight. You can see a writing desk, a large painting on the wall, a tall bookshelf, an antique globe and a heavy oak door with a keypad.",
+
+  "objects": {
+    "desk": {
+      "name": "desk",
+      "aliases": ["desk", "writing desk", "table", "lamp"],
+      "visible": true,
+      "takeable": false,
+      "description": "An old writing desk with a green banker's lamp. A folded note lies on top, and the desk has a single drawer with a brass keyhole."
+    },
+    "note": {
+      "name": "note",
+      "aliases": ["note", "folded note", "paper", "letter"],
+      "visible": true,
+      "takeable": true,
+      "description": "A folded note in neat handwriting. It reads: \"Time hides behind the setting sun.\""
+    },
+    "painting": {
+      "name": "painting",
+      "aliases": ["painting", "picture", "sunset", "frame", "canvas", "artwork"],
+      "visible": true,
+      "takeable": false,
+      "description": "An oil painting of a sunset over the sea. It hangs slightly crooked, as if it has been moved before."
+    },
+    "brass_key": {
+      "name": "brass key",
+      "aliases": ["brass key", "key", "small key"],
+      "visible": false,
+      "takeable": true,
+      "description": "A small brass key, slightly tarnished."
+    },
+    "drawer": {
+      "name": "drawer",
+      "aliases": ["drawer", "desk drawer", "keyhole"],
+      "visible": true,
+      "takeable": false,
+      "description": "A wooden desk drawer with a brass keyhole."
+    },
+    "uv_flashlight": {
+      "name": "UV flashlight",
+      "aliases": ["uv flashlight", "flashlight", "uv light", "torch", "uv torch", "black light", "uv lamp", "light"],
+      "visible": false,
+      "takeable": true,
+      "description": "A compact flashlight that gives off a faint violet glow when switched on. Ultraviolet light can reveal invisible ink."
+    },
+    "torn_page": {
+      "name": "torn page",
+      "aliases": ["torn page", "page", "poem", "scrap"],
+      "visible": false,
+      "takeable": true,
+      "description": "A page torn from a poetry book. It reads: \"Read the seasons as the poet does: Autumn, Winter, Spring, Summer.\""
+    },
+    "bookshelf": {
+      "name": "bookshelf",
+      "aliases": ["bookshelf", "bookcase", "shelf", "shelves"],
+      "visible": true,
+      "takeable": false,
+      "description": "Tall shelves full of dusty volumes. Four books stand out from the rest: they are bound in matching leather and titled Spring, Summer, Autumn and Winter."
+    },
+    "season_books": {
+      "name": "season books",
+      "aliases": ["season books", "four books", "books", "book", "spring", "summer", "autumn", "winter", "leather books"],
+      "visible": false,
+      "takeable": false,
+      "description": "Four leather-bound books titled Spring, Summer, Autumn and Winter. Their first pages look blank, but the paper has an odd, glossy sheen."
+    },
+    "globe": {
+      "name": "globe",
+      "aliases": ["globe", "world", "map"],
+      "visible": true,
+      "takeable": false,
+      "description": "An antique globe on a wooden stand, engraved with the words \"Not all who wander are lost.\" It spins smoothly, but nothing seems hidden in it."
+    },
+    "door": {
+      "name": "door",
+      "aliases": ["door", "exit", "keypad", "oak door", "lock", "way out"],
+      "visible": true,
+      "takeable": false,
+      "description": "A heavy oak door. Next to the handle is a keypad that accepts a 4-digit code."
+    }
+  },
+
+  "season_numbers": {"Spring": 2, "Summer": 7, "Autumn": 4, "Winter": 9},
+
+  "solution": {
+    "door_code": "4927",
+    "code_length": 4
+  },
+
+  "puzzles": {
+    "find_key": "Decode the note and find the brass key behind the painting",
+    "open_drawer": "Unlock the drawer with the brass key",
+    "reveal_numbers": "Reveal the hidden numbers in the season books with UV light",
+    "unlock_door": "Enter the correct code on the door keypad"
+  },
+
+  "hints": {
+    "find_key": "The note talks about a setting sun. Is there a sunset anywhere in this room?",
+    "open_drawer": "You have a key now. Which object in the room has a keyhole?",
+    "get_light": "The drawer is open. Have you taken everything inside it?",
+    "reveal_numbers": "The season books have a strange sheen. Some ink only shows up under a special kind of light.",
+    "order_code": "You have four numbers. The torn page tells you the order to read the seasons in.",
+    "explore": "Try examining everything in the room: the desk, the painting, the bookshelf, the globe and the door."
+  },
+
+  "max_code_attempts_before_hint": 3
+}
