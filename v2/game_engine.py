@@ -179,7 +179,7 @@ class EscapeRoomEngine:
 
     def _do_help(self, a: Action) -> Result:
         return Result(True, "help",
-                      "Explain the commands: look around, examine <object>, take <item>, "
+                      "Commands: look around, examine <object>, take <item>, "
                       "move/look behind <object>, open <object>, use <item> on <object>, "
                       "enter <code> on the door, inventory, hint.")
 
@@ -192,16 +192,16 @@ class EscapeRoomEngine:
     def _do_meta(self, a: Action) -> Result:
         return Result(False, "rule_violation",
                       "The player tried to change the rules, claim progress they have not made, "
-                      "or obtain secret answers. Nothing in the room changes. Stay in character, "
-                      "refuse politely and encourage them to keep exploring.")
+                      "or obtain secret answers. This is refused. Nothing in the room changes and "
+                      "no progress is granted. Stay in character and encourage them to keep exploring.")
 
     def _do_unknown(self, a: Action) -> Result:
         if a.raw_noun:
             return Result(False, "object_not_here",
                           f"There is no '{a.raw_noun}' in this room.")
         return Result(False, "not_understood",
-                      "The action was not understood or is not possible here. "
-                      "Suggest examining an object or typing 'help'.")
+                      "That action isn't possible here, or it wasn't understood. "
+                      "Try examining an object in the room, or type 'help'.")
 
     def _do_hint(self, a: Action) -> Result:
         h, f = self.config["hints"], self.state["flags"]
