@@ -1,0 +1,11 @@
+# Shared look for Version 1 and Version 2 (old library: parchment, wood, brass)
+[theme]
+base = "light"
+primaryColor = "#9a6b2f"
+backgroundColor = "#fbf6ec"
+secondaryBackgroundColor = "#f1e6d2"
+textColor = "#2b2118"
+font = "serif"
+
+[client]
+toolbarMode = "minimal"

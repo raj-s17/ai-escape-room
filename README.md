@@ -14,7 +14,7 @@ The project was built in the two required versions:
 | Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
 | How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
 | Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
-| What the screen shows | Orange "LLM only" banner, chat-first layout, state shown as **?** (puzzles, items, door unknown) | Green "Reliable" banner, live state (puzzles, items, door, code tries, blocked rule breaks) and an **engine check** for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
+| What the screen shows (same theme and layout) | Orange banner; status row shows **?** / **-** (nothing is tracked); a "Who decided" card: *Gemini alone, no validation* | Green banner; live status row (items, door, code tries, blocked rule breaks); an **engine check** card for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
 | What the LLM does | Everything | Narrates the outcome the engine already decided |
 | Works without an API key | No | Yes (offline mode, engine text only) |
 
@@ -51,6 +51,7 @@ brass key, UV flashlight, torn page.
 * **Python 3.10+**
 * **Streamlit** for the web interface
 * **Pillow** to draw the 2D room (`room_renderer.py`, shared by V1 and V2) and **streamlit-image-coordinates** to detect clicks on it
+* One shared look for both versions: `.streamlit/config.toml` (library theme) + `ui_style.py` (header, status row, story panel)
 * **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
@@ -127,7 +128,7 @@ did. This makes the core V1 weakness visible.
 | `v2/action_parser.py` | Free text to a structured `Action`. Rule-based first, with a Gemini JSON parser only as a fallback. Flags rule-breaking messages as `meta` |
 | `v2/narrator.py` | Sends the **engine result + public state** (no solutions) to Gemini for narration. The **output guard** rejects narration that claims a false escape or contains the code |
 | `room_renderer.py` | Draws the room with Pillow **from the game state** every turn (painting comes off the wall, drawer opens, items disappear, numbers glow, door opens) and maps clicks to object ids, ignoring hidden or collected objects |
-| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, and a sidebar with inventory (hold items), a puzzles-solved progress bar (no step names, so nothing is spoiled), door status, counters, raw JSON state and a debug view |
+| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, and a sidebar with inventory (hold items), door status, counters, raw JSON state and a debug view |
 
 Clicks and typed text end in the **same engine**: a button builds a
 structured `Action` directly (nothing to misunderstand), typed text goes
@@ -182,7 +183,7 @@ screenshot used scripted stand-in replies, because V1 cannot run without the LLM
 
 ### Version 1
 
-| V1: chat-first, state unknown (?), clicked objects send text to Gemini - the picture never changes |
+| V1: same layout as V2, but the state is unknown (?), Gemini alone decides, and the picture never changes |
 |---|
 | ![v1](docs/screenshots/v1_gameplay.png) |
 
@@ -210,6 +211,8 @@ AI-Escape-Room/
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
 ├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
+├── ui_style.py             # shared look: header, status row, story panel
+├── .streamlit/config.toml  # shared library theme
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/
 │   ├── test_game.py        # 20 tests: V2 engine, parser, guard, model selection

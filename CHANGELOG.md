@@ -1,5 +1,10 @@
 # Changelog
 
+## UI polish (final)
+- Puzzle checklist and puzzle counter removed (they spoiled the solutions); progress is still tracked in the V2 JSON state.
+- One shared library theme for V1 and V2 (`.streamlit/config.toml`, `ui_style.py`): same header, status row, sidebar order, buttons (Hint, Restart), labels, story panel and chat placeholder.
+- V1 shows "?" / "-" in the status row and a "Who decided" card (Gemini alone, no validation); V2 shows live state and the engine check.
+
 ## Point-and-click room in V1 and V2 (final)
 - The point-and-click interface now lives in the two required versions; the separate `v3/` folder is removed.
 - `room_renderer.py` (repo root, shared) draws the library with Pillow and maps clicks to objects.
