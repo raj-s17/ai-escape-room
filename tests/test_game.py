@@ -177,3 +177,27 @@ def test_offline_mode_uses_engine_facts(game):
     result = game("look behind the painting")
     text = Narrator(game.engine, client=None).narrate("look behind the painting", result)
     assert "brass key" in text
+
+
+# --- Model selection -----------------------------------------------------------
+def test_resolve_model_falls_back_to_available_flash():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    import gemini_model
+
+    class M:
+        def __init__(self, name, actions=("generateContent",)):
+            self.name, self.supported_actions = "models/" + name, list(actions)
+
+    class Client:
+        class models:
+            @staticmethod
+            def list():
+                return [M("gemini-2.5-flash"), M("gemini-3.5-flash"), M("gemini-3.5-flash-tts"),
+                        M("gemini-3-flash-preview"), M("text-embedding-004", ("embedContent",))]
+
+    gemini_model._cache.clear()
+    assert gemini_model.resolve_model(Client(), "gemini-flash-latest") == "gemini-3.5-flash"
+    gemini_model._cache.clear()
+    assert gemini_model.resolve_model(Client(), "gemini-2.5-flash") == "gemini-2.5-flash"

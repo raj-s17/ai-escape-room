@@ -46,7 +46,7 @@ brass key, UV flashlight, torn page.
 
 * **Python 3.10+**
 * **Streamlit** for the web chat interface
-* **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-flash-latest`)
+* **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
 * **python-dotenv** to load the API key from `.env`
@@ -156,7 +156,7 @@ PNG versions: [`docs/architecture/`](docs/architecture/).
 Eight documented test cases (the five assignment challenges plus three more)
 are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitations.
 
-* `pytest -v` runs **19 automated tests** on V2 with no API key, including a
+* `pytest -v` runs **20 automated tests** on V2 with no API key, including a
   fake "malicious" LLM to test the output guard.
 * `python scripts/run_test_cases.py` sends the same attacks to **V1 (real
   Gemini)** and **V2** and saves full transcripts to
@@ -197,7 +197,7 @@ AI-Escape-Room/
 │   ├── game_engine.py      # state + action validation
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
-├── tests/test_game.py      # 19 pytest tests
+├── tests/test_game.py      # 20 pytest tests
 ├── scripts/run_test_cases.py
 ├── docs/
 │   ├── architecture/       # diagrams (.mmd + .png)

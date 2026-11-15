@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from google import genai
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # for gemini_model.py
 from game_master import ESCAPE_TAG, INTRO, ask_game_master  # noqa: E402
 
 load_dotenv()
@@ -63,6 +64,10 @@ if client is None:
         "free key from Google AI Studio."
     )
     st.stop()
+
+from gemini_model import resolve_model  # noqa: E402
+
+st.caption(f"Model: `{resolve_model(client)}`")
 
 if "messages" not in st.session_state:
     reset_game()

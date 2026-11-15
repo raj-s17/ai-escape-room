@@ -51,7 +51,7 @@ class Narrator:
     def __init__(self, engine, client=None, model: str | None = None):
         self.engine = engine
         self.client = client
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.last_guard_triggered = False
 
     @property

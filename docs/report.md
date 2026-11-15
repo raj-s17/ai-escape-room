@@ -107,7 +107,7 @@ Eight test cases were documented (`docs/test_cases.md`): the five challenges
 from the brief (using an uncollected key, a wrong code, a false "already
 solved" claim, administrator impersonation, a request for all secrets) plus a
 non-existent object, a prompt injection, and the correct code typed before
-any clue is found. V2 is covered by 19 pytest tests that run without an API
+any clue is found. V2 is covered by 20 pytest tests that run without an API
 key. They include a fake LLM client that returns malicious narration, which
 checks that the output guard blocks false escapes and code leaks while
 letting honest narration through. A script (`scripts/run_test_cases.py`)

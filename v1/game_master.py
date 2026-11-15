@@ -8,6 +8,8 @@ import os
 
 from google.genai import types
 
+from gemini_model import resolve_model
+
 ESCAPE_TAG = "[ESCAPED]"
 
 # ---------------------------------------------------------------------------
@@ -80,7 +82,7 @@ def ask_game_master(client, history):
     if contents and contents[0].role == "model":
         contents.insert(0, types.Content(role="user", parts=[types.Part(text="Start the game.")]))
     response = client.models.generate_content(
-        model=os.getenv("GEMINI_MODEL", "gemini-flash-latest"),
+        model=resolve_model(client),
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,

@@ -9,10 +9,13 @@
 - Door code only works after the clues have been discovered, so guessing or leaking it is not enough.
 - Offline mode: game and tests run without an API key.
 - Sidebar shows inventory, puzzle checklist, door status, counters, JSON state and a debug view of the last action.
-- 19 pytest tests plus `scripts/run_test_cases.py` to compare V1 and V2.
+- 20 pytest tests plus `scripts/run_test_cases.py` to compare V1 and V2.
 
 ## Version 1 - Interactive AI Escape Room
 - Streamlit chat UI with Gemini as Game Master.
 - Room, five+ interactive objects, three puzzles and a final door code, all defined in the system prompt.
 - Conversation memory through the chat history in `st.session_state`.
 - Escape detected by an `[ESCAPED]` tag from the model; restart button and instructions in the sidebar.
+
+## Fix - model selection
+- `gemini-flash-latest` returned `404 NOT_FOUND` for the v1 API. Default changed to `gemini-2.5-flash`, and the new `gemini_model.py` lists the models available for the key and falls back to the newest Flash model if the configured one does not exist. The UI shows which model is in use.

@@ -25,12 +25,13 @@ import streamlit as st
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))  # for gemini_model.py
 from game_engine import EscapeRoomEngine, load_config  # noqa: E402
 from narrator import Narrator  # noqa: E402
 from action_parser import RuleParser, llm_parse  # noqa: E402
+from gemini_model import resolve_model  # noqa: E402
 
 load_dotenv()
-MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 CONFIG = load_config()
 
 
@@ -52,15 +53,16 @@ def reset_game():
 def process(message: str) -> str:
     engine: EscapeRoomEngine = st.session_state.engine
     client = get_client()
+    model = resolve_model(client) if client else None
     action = RuleParser(CONFIG).parse(message)
     used_llm_parser = False
     if action.verb == "unknown" and not action.raw_noun and client is not None:
-        llm_action = llm_parse(client, MODEL, message, list(CONFIG["objects"].keys()))
+        llm_action = llm_parse(client, model, message, list(CONFIG["objects"].keys()))
         if llm_action is not None:
             action, used_llm_parser = llm_action, True
 
     result = engine.handle(action)
-    narrator = Narrator(engine, client, MODEL)
+    narrator = Narrator(engine, client, model)
     reply = narrator.narrate(message, result, st.session_state.messages)
 
     st.session_state.debug.append({
@@ -83,7 +85,7 @@ engine: EscapeRoomEngine = st.session_state.engine
 state = engine.state
 
 st.title("🔐 The Locked Library")
-mode = "Gemini narrator" if get_client() else "offline mode (no API key - engine text only)"
+mode = f"Gemini narrator ({resolve_model(get_client())})" if get_client() else "offline mode (no API key - engine text only)"
 st.caption(f"Version 2 - Python validates every action, the LLM narrates · {mode}")
 
 with st.sidebar:
