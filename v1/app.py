@@ -68,6 +68,7 @@ def reset_game():
     st.session_state.escaped = False
     st.session_state.selected = None
     st.session_state.last_click = None
+    st.session_state.pad_code = ""
 
 
 def send(text: str):
@@ -99,6 +100,8 @@ with st.sidebar:
     st.header("🎒 Inventory")
     st.caption("Not tracked in Version 1. Only Gemini \"remembers\" what you carry, in the chat.")
     st.divider()
+    ui.quick_commands(ui.EXAMPLES, on_pick=send, disabled=client is None or st.session_state.escaped)
+    st.divider()
     show_labels = st.toggle("Show object labels", value=True)
     c1, c2 = st.columns(2)
     hint = c1.button("💡 Hint", width="stretch", disabled=client is None)
@@ -107,6 +110,7 @@ with st.sidebar:
         st.rerun()
     st.warning("Version 1: Gemini is the whole game. No inventory, no state, no validation, and the room picture "
             "never changes. Version 2 fixes that.")
+    st.caption(ui.THEME_TIP)
 
 if client is None:
     ui.header(1, "🤖 The LLM is the whole game: story, rules, solutions and progress live only in the chat.",
@@ -158,13 +162,10 @@ with room_col:
                     send(text)
                 st.rerun()
         if sel == "door":
-            k1, k2 = st.columns([3, 1])
-            code = k1.text_input("Keypad", key="keypad", max_chars=4, placeholder="4-digit code",
-                                 label_visibility="collapsed")
-            if k2.button("🔢 Enter", width="stretch") and code.strip():
-                with st.spinner("The Game Master is thinking..."):
-                    send(f"I enter {code.strip()} on the door keypad.")
-                st.rerun()
+            _, pad, _ = st.columns([1, 1.4, 1])
+            with pad:
+                ui.keypad(on_enter=lambda code: send(f"I enter {code} on the door keypad."),
+                          disabled=st.session_state.escaped)
 
 with story_col:
     last = st.session_state.get("last_turn")

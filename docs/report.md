@@ -105,7 +105,7 @@ storytelling**. Every message goes through a pipeline:
    opens, collected items disappear, numbers glow under UV light, the door
    opens), so the picture can never disagree with the engine. Clicking an
    object selects it, and context buttons (Examine, Take, Look behind, Open,
-   Spin, a keypad, *Use held item here*) send structured actions straight to
+   Spin, a clickable keypad, *Use held item here*) send structured actions straight to
    the engine; typed commands still go through the parser. The sidebar shows
    the inventory (an item can be held, then used by clicking), the door status, turn and attempt
    counters, the raw JSON state and a debug view of the last parsed action.

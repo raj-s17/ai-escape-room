@@ -1,5 +1,10 @@
 # Changelog
 
+## Light/dark theme and more interaction
+- `.streamlit/config.toml` defines a light and a dark library palette; custom styles use theme-independent tints, so both versions look the same in either mode.
+- Clickable door keypad (digits, delete, enter) in V1 and V2 instead of a text box.
+- "Try a command" buttons in the sidebar of both versions; hover/press feedback on buttons and status cards.
+
 ## UI polish (final)
 - Puzzle checklist and puzzle counter removed (they spoiled the solutions); progress is still tracked in the V2 JSON state.
 - One shared library theme for V1 and V2 (`.streamlit/config.toml`, `ui_style.py`): same header, status row, sidebar order, buttons (Hint, Restart), labels, story panel and chat placeholder.

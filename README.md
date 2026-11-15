@@ -51,7 +51,7 @@ brass key, UV flashlight, torn page.
 * **Python 3.10+**
 * **Streamlit** for the web interface
 * **Pillow** to draw the 2D room (`room_renderer.py`, shared by V1 and V2) and **streamlit-image-coordinates** to detect clicks on it
-* One shared look for both versions: `.streamlit/config.toml` (library theme) + `ui_style.py` (header, status row, story panel)
+* One shared look for both versions, in **light and dark mode**: `.streamlit/config.toml` defines a light and a dark library palette (switch via ⋮ → Settings → Theme, or it follows the system), and `ui_style.py` only uses colours that work on both
 * **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
@@ -84,7 +84,7 @@ pytest -v                               # automated tests, no key needed
 python scripts/run_test_cases.py        # V1 vs V2 transcripts -> docs/test_results.md
 ```
 
-**How to play:** click an object in the room and choose an action, or type
+**How to play:** click an object in the room and choose an action, click one of the *Try a command* buttons in the sidebar, use the clickable door keypad, or type
 things like *examine the desk*, *look behind the painting*, *take the key*,
 *use the key on the drawer*, *shine the flashlight on the books*, *enter 1234
 on the door*. In V2 you can also **hold** an inventory item and click where to
@@ -197,6 +197,12 @@ screenshot used scripted stand-in replies, because V1 cannot run without the LLM
 | **Escaped** | |
 | ![escaped](docs/screenshots/v2_escaped.png) | |
 
+### Dark mode
+
+| V1 | V2 with the clickable door keypad |
+|---|---|
+| ![v1 dark](docs/screenshots/v1_dark.png) | ![v2 dark](docs/screenshots/v2_dark_keypad.png) |
+
 ## 9. Project structure
 
 ```
@@ -211,8 +217,8 @@ AI-Escape-Room/
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
 ├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
-├── ui_style.py             # shared look: header, status row, story panel
-├── .streamlit/config.toml  # shared library theme
+├── ui_style.py             # shared look + widgets: header, status row, story, keypad, example commands
+├── .streamlit/config.toml  # shared library theme (light + dark)
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/
 │   ├── test_game.py        # 20 tests: V2 engine, parser, guard, model selection

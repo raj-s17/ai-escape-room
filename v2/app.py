@@ -61,6 +61,7 @@ def reset_game():
     st.session_state.selected = None
     st.session_state.held = None
     st.session_state.last_click = None
+    st.session_state.pad_code = ""
 
 
 def run_action(action: Action, player_text: str, source: str = "click"):
@@ -83,7 +84,7 @@ def run_action(action: Action, player_text: str, source: str = "click"):
 
 
 def run_text(text: str):
-    """Typed natural-language command: same pipeline as Version 2."""
+    """Typed (or example) command: parsed first, then validated by the same engine."""
     client = get_client()
     action = RuleParser(CONFIG).parse(text)
     if action.verb == "unknown" and not action.raw_noun and client is not None:
@@ -91,10 +92,8 @@ def run_text(text: str):
     run_action(action, text, source="typed")
 
 
-def enter_code():
-    code = st.session_state.get("keypad", "").strip()
-    st.session_state.keypad = ""
-    run_action(Action("enter_code", "door", code=code), f"🔢 Enter {code or '(nothing)'} on the keypad")
+def enter_code(code: str):
+    run_action(Action("enter_code", "door", code=code), f"🔢 Enter {code} on the keypad")
 
 
 def hold(item):
@@ -137,6 +136,8 @@ with st.sidebar:
         st.info(f"Holding the **{NAMES[st.session_state.held]}**. Click an object in the room to use it there.")
 
     st.divider()
+    ui.quick_commands(ui.EXAMPLES, on_pick=run_text, disabled=state["escaped"])
+    st.divider()
     show_labels = st.toggle("Show object labels", value=True)
     c1, c2 = st.columns(2)
     c1.button("💡 Hint", width="stretch", on_click=run_action, args=(Action("hint"), "💡 Hint please"))
@@ -147,6 +148,7 @@ with st.sidebar:
         st.json({k: v for k, v in state.items() if k != "history"})
     with st.expander("🔍 Last action (debug)"):
         st.json(st.session_state.debug[-1] if st.session_state.debug else {})
+    st.caption(ui.THEME_TIP)
 
 # ----- main area: room + actions | story -----------------------------------
 room_col, story_col = st.columns([1.5, 1], gap="large")
@@ -192,10 +194,9 @@ with room_col:
             col.button(label, key=f"act_{sel}_{label}", width="stretch",
                        on_click=run_action, args=(action, text))
         if sel == "door":
-            k1, k2 = st.columns([3, 1])
-            k1.text_input("Keypad", key="keypad", max_chars=4, placeholder="4-digit code",
-                          label_visibility="collapsed")
-            k2.button("🔢 Enter", width="stretch", on_click=enter_code)
+            _, pad, _ = st.columns([1, 1.4, 1])
+            with pad:
+                ui.keypad(on_enter=enter_code, disabled=state["escaped"])
 
 with story_col:
     last = st.session_state.debug[-1] if st.session_state.debug else None
