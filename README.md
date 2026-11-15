@@ -127,7 +127,7 @@ did. This makes the core V1 weakness visible.
 | `v2/action_parser.py` | Free text to a structured `Action`. Rule-based first, with a Gemini JSON parser only as a fallback. Flags rule-breaking messages as `meta` |
 | `v2/narrator.py` | Sends the **engine result + public state** (no solutions) to Gemini for narration. The **output guard** rejects narration that claims a false escape or contains the code |
 | `room_renderer.py` | Draws the room with Pillow **from the game state** every turn (painting comes off the wall, drawer opens, items disappear, numbers glow, door opens) and maps clicks to object ids, ignoring hidden or collected objects |
-| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, and a sidebar with inventory (hold items), puzzle checklist, door status, counters, raw JSON state and a debug view |
+| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, and a sidebar with inventory (hold items), a puzzles-solved progress bar (no step names, so nothing is spoiled), door status, counters, raw JSON state and a debug view |
 
 Clicks and typed text end in the **same engine**: a button builds a
 structured `Action` directly (nothing to misunderstand), typed text goes

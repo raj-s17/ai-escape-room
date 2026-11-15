@@ -107,8 +107,8 @@ storytelling**. Every message goes through a pipeline:
    object selects it, and context buttons (Examine, Take, Look behind, Open,
    Spin, a keypad, *Use held item here*) send structured actions straight to
    the engine; typed commands still go through the parser. The sidebar shows
-   the inventory (an item can be held, then used by clicking), a puzzle
-   checklist with a progress bar, the door status, turn and attempt
+   the inventory (an item can be held, then used by clicking), a
+   puzzles-solved progress bar (step names are hidden so nothing is spoiled), the door status, turn and attempt
    counters, the raw JSON state and a debug view of the last parsed action.
    The debug view was very useful for explaining and testing the system.
 
@@ -143,9 +143,9 @@ call. By design, V1 accepts TC8 (the guessed code), because its only rule is
   already have the key" as cheating, even when the player really had it.
   Claims about *items* are now passed to the engine, which checks the
   inventory. Only claims about *solved puzzles or opened locks* are refused.
-* **Streamlit state.** Disabled checkbox widgets kept their first value
-  across reruns, so solved puzzles never appeared ticked. They were replaced
-  with a markdown checklist.
+* **Spoilers in the UI.** A puzzle checklist in the sidebar named every step
+  ("find the brass key behind the painting"), which gave the solutions away.
+  It was replaced by a plain progress bar fed by the same game state.
 * **Gemini conversation format.** The model expects the conversation to start
   with a user turn, so V1 adds a "Start the game" message before the intro.
 

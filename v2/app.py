@@ -141,10 +141,8 @@ with st.sidebar:
         st.info(f"Holding the **{NAMES[st.session_state.held]}**. Click an object in the room to use it there.")
 
     st.divider()
-    st.subheader("🧩 Puzzles")
-    st.markdown("\n".join(f"- {'✅' if p in state['solved_puzzles'] else '⬜'} {d}"
-                          for p, d in CONFIG["puzzles"].items()))
-    st.progress(len(state["solved_puzzles"]) / len(CONFIG["puzzles"]))
+    st.progress(len(state["solved_puzzles"]) / len(CONFIG["puzzles"]),
+                text=f"🧩 Puzzles solved: {len(state['solved_puzzles'])}/{len(CONFIG['puzzles'])}")
     st.write("🚪 Door: " + ("🟢 open" if state["escaped"] else "🔴 locked"))
     st.caption(f"Turn {state['turn']} · code tries {state['code_attempts']} · rule breaks {state['rule_violations']}")
 
