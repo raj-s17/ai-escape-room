@@ -14,7 +14,7 @@ The project was built in the two required versions:
 | Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
 | How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
 | Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
-| What the screen shows (same minimal one-screen layout) | Orange header with **?** chips (nothing is tracked); a "Who decided" line: *Gemini alone, no validation* | Green header with live chips (items, door, code tries, blocked rule breaks); an **engine check** line for every action (`verb(args) → ✅ allowed / ❌ refused`, event, guard) |
+| What the screen shows (same full-screen game layout) | Orange **V1** badge; the room never changes; inventory slots stay empty; each action flashes *"Gemini decided alone - no validation"* | Green **V2** badge; the room follows the game state; real inventory slots (hold an item, click where to use it); each action flashes an **engine check** (`✅ / ❌ verb → event`) |
 | What the LLM does | Everything | Narrates the outcome the engine already decided |
 | Works without an API key | No | Yes (offline mode, engine text only) |
 
@@ -51,7 +51,7 @@ brass key, UV flashlight, torn page.
 * **Python 3.10+**
 * **Streamlit** for the web interface
 * **Pillow** to draw the 2D room (`room_renderer.py`, shared by V1 and V2) and **streamlit-image-coordinates** to detect clicks on it
-* One shared look for both versions, in **light and dark mode**: `.streamlit/config.toml` defines a light and a dark library palette (switch via ⋮ → Settings → Theme, or it follows the system), and `ui_style.py` only uses colours that work on both
+* One shared look for both versions: a dark library theme locked in `.streamlit/config.toml`, and `ui_style.py` for the game HUD
 * **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
@@ -84,13 +84,14 @@ pytest -v                               # automated tests, no key needed
 python scripts/run_test_cases.py        # V1 vs V2 transcripts -> docs/test_results.md
 ```
 
-**How to play:** everything fits on one screen. Click an object in the room
-and choose an action, use the clickable keypad on the door, or type things
-like *look behind the painting*, *use the key on the drawer*, *shine the
-flashlight on the books*. In V2, click an item in the 🎒 row to **hold** it,
-then click where to use it. 💡 (hint) and ↻ (restart) are next to the header.
-V2's raw JSON state and debug view are in the collapsed sidebar (») for
-developers.
+**How to play:** the room fills the screen like a point-and-click game.
+Click an object and its actions appear right next to it (the door has a
+clickable 🔢 keypad). The newest line of the story shows as a subtitle;
+📜 (top right) opens the whole conversation, 💡 gives a hint, ↻ restarts.
+In V2, click an item in the inventory slots to hold it, then click where to
+use it; each action flashes a ✅ / ❌ engine check. You can also type any
+command in the box at the bottom. V2's JSON state and debug view are in the
+collapsed sidebar (») for developers. The app always uses its dark theme.
 
 ## 5. Version 1: Interactive AI Escape Room
 
@@ -130,7 +131,7 @@ did. This makes the core V1 weakness visible.
 | `v2/action_parser.py` | Free text to a structured `Action`. Rule-based first, with a Gemini JSON parser only as a fallback. Flags rule-breaking messages as `meta` |
 | `v2/narrator.py` | Sends the **engine result + public state** (no solutions) to Gemini for narration. The **output guard** rejects narration that claims a false escape or contains the code |
 | `room_renderer.py` | Draws the room with Pillow **from the game state** every turn (painting comes off the wall, drawer opens, items disappear, numbers glow, door opens) and maps clicks to object ids, ignoring hidden or collected objects |
-| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, an inventory row (click to hold an item), header chips with the live state, and a collapsed sidebar with the raw JSON state and a debug view |
+| `v2/app.py` | Streamlit UI: clickable room + context buttons (Examine, Take, Look behind, Open, Spin, keypad, *Use held item here*), story panel, typed commands, inventory slots (click to hold an item), a ✅/❌ engine-check toast per action, the 📜 story popover, and a collapsed sidebar with the raw JSON state and a debug view |
 
 Clicks and typed text end in the **same engine**: a button builds a
 structured `Action` directly (nothing to misunderstand), typed text goes
@@ -180,30 +181,16 @@ are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitation
 ## 8. Screenshots
 
 V2 screenshots were taken in offline mode (engine text without Gemini
-narration); with an API key the same events are narrated by Gemini. The V1
-screenshot used scripted stand-in replies, because V1 cannot run without the LLM.
+narration). The V1 screenshots used scripted stand-in replies, because V1
+cannot run without the LLM.
 
-### Version 1
-
-| V1: same layout as V2, but the state is unknown (?), Gemini alone decides, and the picture never changes |
-|---|
-| ![v1](docs/screenshots/v1_gameplay.png) |
-
-### Version 2
-
-| Start | Object selected: context buttons |
+| V1: same screen, but the room never changes and the slots stay empty | V2: hold the key, click the drawer, "Use brass key" appears next to it |
 |---|---|
-| ![start](docs/screenshots/v2_start.png) | ![selected](docs/screenshots/v2_selected.png) |
-| **Adversarial messages refused** | **UV light reveals the numbers (picture follows the state)** |
-| ![adversarial](docs/screenshots/v2_adversarial.png) | ![books](docs/screenshots/v2_books.png) |
-| **Escaped** | |
-| ![escaped](docs/screenshots/v2_escaped.png) | |
-
-### Dark mode (both versions follow the light / dark theme)
-
-| V1 | V2 with the clickable door keypad |
-|---|---|
-| ![v1 dark](docs/screenshots/v1_dark.png) | ![v2 dark](docs/screenshots/v2_dark_keypad.png) |
+| ![v1](docs/screenshots/v1_gameplay.png) | ![v2 hold](docs/screenshots/v2_hold_use.png) |
+| **V2: 📜 story popover + ✅ engine check** | **V2: escaped** |
+| ![story](docs/screenshots/v2_story.png) | ![escaped](docs/screenshots/v2_escaped.png) |
+| **V2: door keypad** | |
+| ![v2 keypad](docs/screenshots/v2_keypad.png) | |
 
 ## 9. Project structure
 
@@ -219,8 +206,8 @@ AI-Escape-Room/
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
 ├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
-├── ui_style.py             # shared minimal look: header, engine/LLM check line, story, keypad
-├── .streamlit/config.toml  # shared library theme (light + dark)
+├── ui_style.py             # shared game HUD: badge, subtitle, story popover, keypad, floating buttons
+├── .streamlit/config.toml  # shared dark library theme
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/
 │   ├── test_game.py        # 20 tests: V2 engine, parser, guard, model selection

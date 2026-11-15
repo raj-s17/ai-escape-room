@@ -15,7 +15,6 @@ happens.
 Run:  streamlit run v1/app.py
 """
 
-import html
 import os
 import sys
 from pathlib import Path
@@ -84,11 +83,15 @@ def send(text: str):
         st.session_state.escaped = True
         reply = reply.replace(ESCAPE_TAG, "").strip()
     st.session_state.messages.append({"role": "assistant", "content": reply})
-    st.session_state.last_turn = {"input": text, "escaped": escaped}
+    # V1's "check": nothing validated the action - Gemini alone decided (flashed as a toast)
+    st.session_state.toast = ("Gemini decided alone - no validation" + (" - [ESCAPED]" if escaped else ""),
+                              ":material/smart_toy:")
 
 
 # ---------------------------------------------------------------------------
-# Page: same minimal layout as V2; the differences are the real ones
+# Page: the same full-screen game scene and HUD as V2 (see ui_style.py).
+# The differences are the real ones: the room never changes, the inventory
+# slots stay empty, and nothing validates what Gemini decides.
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Locked Library - V1", page_icon="🗝️", layout="wide",
                    initial_sidebar_state="collapsed")
@@ -96,59 +99,58 @@ ui.apply_style()
 if "messages" not in st.session_state:
     reset_game()
 client = get_client()
+if st.session_state.get("toast"):
+    msg, icon = st.session_state.pop("toast")
+    st.toast(msg, icon=icon)
 
-head, b_hint, b_restart = st.columns([12, 1, 1], vertical_alignment="center")
-with head:
-    ui.header(1, "Gemini is the whole game", ["🎒 ?", "🚪 ?", "no state tracked"])
-hint = b_hint.button("💡", help="Hint", width="stretch", disabled=client is None or st.session_state.escaped)
-if b_restart.button("↻", help="Restart", width="stretch"):
-    reset_game()
+ui.badge(1)
+
+# ----- the room: always the starting room (V1 keeps no state) ------------------
+img = rr.render(START_STATE, st.session_state.selected, False, NAMES)
+click = streamlit_image_coordinates(img, key="room", use_column_width="always",
+                                    image_format="JPEG", jpeg_quality=90, cursor="pointer")
+if click and click.get("unix_time") != st.session_state.last_click:
+    st.session_state.last_click = click.get("unix_time")
+    x = click["x"] * rr.W / click["width"]
+    y = click["y"] * rr.H / click["height"]
+    st.session_state.selected = rr.hit_test(x, y, START_STATE)
     st.rerun()
 
-if client is None:
-    st.error("No GEMINI_API_KEY found. Copy `.env.example` to `.env` and add your free key from Google AI "
-             "Studio. (Version 2 also runs offline.)")
-    st.stop()
-if hint:
-    with st.spinner("The Game Master is thinking..."):
-        send("I'm stuck. Can you give me a hint?")
-    st.rerun()
-
-room_col, story_col = st.columns([1.3, 1], gap="medium")
-
-with room_col:
-    img = rr.render(START_STATE, st.session_state.selected, True, NAMES)
-    click = streamlit_image_coordinates(img, key="room", use_column_width="always",
-                                        image_format="JPEG", jpeg_quality=88, cursor="pointer")
-    if click and click.get("unix_time") != st.session_state.last_click:
-        st.session_state.last_click = click.get("unix_time")
-        x = click["x"] * rr.W / click["width"]
-        y = click["y"] * rr.H / click["height"]
-        st.session_state.selected = rr.hit_test(x, y, START_STATE)
+# ----- top right: story, hint, restart ---------------------------------------
+with st.container(key="hud_top", horizontal=True):
+    with st.popover("", icon=":material/history_edu:", help="Story"):
+        ui.story(st.session_state.messages)
+    st.button("", icon=":material/lightbulb:", help="Hint", on_click=send,
+              args=("I'm stuck. Can you give me a hint?",), disabled=client is None or st.session_state.escaped)
+    if st.button("", icon=":material/restart_alt:", help="Restart"):
+        reset_game()
         st.rerun()
 
-    sel = st.session_state.selected
-    if st.session_state.escaped:
-        st.success(ui.ESCAPED)
-    elif sel is None:
-        st.caption("👆 Click an object in the room. (In V1 this picture never changes: nothing tracks the game.)")
-    else:
-        commands = COMMANDS.get(sel, [f"Examine the {NAMES[sel]}"])
-        cols = st.columns([1.2] + [1.6] * len(commands), vertical_alignment="center")
-        cols[0].markdown(f"#### {NAMES[sel].capitalize()}")
-        for col, text in zip(cols[1:], commands):
-            col.button(text, key=f"cmd_{sel}_{text}", width="stretch", on_click=send, args=(text,))
+# ----- suggested commands next to the clicked object (sent to Gemini as text) --
+sel = st.session_state.selected
+if client is None:
+    ui.subtitle("No GEMINI_API_KEY found. Add your key to .env - Version 1 needs Gemini (Version 2 also runs offline).")
+elif sel and not st.session_state.escaped:
+    ui.place_actions(rr.HOTSPOTS[sel])
+    with st.container(key="hud_actions", horizontal=True):
+        for text in COMMANDS.get(sel, [f"Examine the {NAMES[sel]}"]):
+            st.button(text, key=f"cmd_{sel}_{text}", on_click=send, args=(text,))
         if sel == "door":
-            ui.keypad(on_enter=lambda code: send(f"I enter {code} on the door keypad."))
+            with st.popover("🔢 Keypad"):
+                ui.keypad(on_enter=lambda code: send(f"I enter {code} on the door keypad."))
 
-with story_col:
-    last = st.session_state.get("last_turn")
-    ui.check(1, "🤖 <b>Who decided</b> · Gemini alone, <b>no validation</b>"
-                + (f" · <i>{html.escape(last['input'])}</i>" if last else "")
-                + (" · ended the game with <code>[ESCAPED]</code>" if last and last["escaped"] else ""))
-    ui.story(st.session_state.messages)
+# ----- bottom: latest story line, empty inventory slots ------------------------
+if client is not None:
+    if st.session_state.escaped:
+        ui.subtitle("🎉 You escaped the Locked Library! Press ↻ to play again.")
+    else:
+        ui.subtitle(next(m["content"] for m in reversed(st.session_state.messages) if m["role"] == "assistant"))
 
-if typed := st.chat_input(ui.CHAT_PLACEHOLDER, disabled=st.session_state.escaped):
+with st.container(key="hud_inv", horizontal=True):
+    for i in range(ui.SLOTS):
+        st.button(" ", key=f"slot_{i}", disabled=True, help="Version 1 keeps no inventory - only Gemini 'remembers'")
+
+if typed := st.chat_input(ui.CHAT_PLACEHOLDER, disabled=client is None or st.session_state.escaped):
     with st.spinner("The Game Master is thinking..."):
         send(typed)
     st.rerun()

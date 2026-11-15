@@ -1,21 +1,13 @@
-# Shared look for Version 1 and Version 2: an old library (parchment, wood, brass).
-# Both a light and a dark palette are defined, so the theme switch in the app menu
-# (top right: Settings > Theme > Light / Dark / System) keeps the same style.
+# Shared look for Version 1 and Version 2: a dark old library (wood, brass).
+# Only [theme] is set, so the app is always dark (no light/dark switch).
 [theme]
-font = "serif"
-baseRadius = "medium"
-
-[theme.light]
-primaryColor = "#9a6b2f"
-backgroundColor = "#fbf6ec"
-secondaryBackgroundColor = "#f1e6d2"
-textColor = "#2b2118"
-
-[theme.dark]
+base = "dark"
 primaryColor = "#d9a35b"
 backgroundColor = "#16110c"
 secondaryBackgroundColor = "#251c13"
 textColor = "#efe4d2"
+font = "serif"
+baseRadius = "medium"
 
 [client]
 toolbarMode = "viewer"

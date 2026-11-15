@@ -1,5 +1,11 @@
 # Changelog
 
+## Game-style full-screen UI ("Option A")
+- Both versions: the room fills the window; actions float next to the clicked object; latest story line as a subtitle; 📜 popover with the whole conversation; 💡 / ↻ buttons; inventory slots; keypad in a popover; no scrolling at 1366x768, 1440x900, 1920x1080.
+- Dark theme only (locked in `.streamlit/config.toml`).
+- V2 flashes the engine check (✅/❌) as a toast; V1 flashes "Gemini decided alone - no validation".
+- Built with Streamlit's own elements (popover, toast, keyed containers, chat input, Material icons) following Streamlit's bundled `developing-with-streamlit` skill; CSS only positions the keyed HUD containers over the scene.
+
 ## Minimal one-screen UI
 - Both versions fit on one screen without scrolling (checked at 1366×768, 1440×900, 1920×1080, light and dark).
 - One-line header with state chips and 💡 / ↻ buttons; compact keypad; V2 inventory row (click to hold); the "Try a command" list, status cards, theme tip and labels toggle were removed; V2's JSON/debug moved to the collapsed sidebar.

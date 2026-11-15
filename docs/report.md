@@ -43,8 +43,10 @@ replies in character. The model marks a successful escape by adding an
 screen shows the library drawn with Pillow (`room_renderer.py`, shared with
 V2). Clicking an object offers suggested commands that are sent to Gemini as
 text. Because V1 has no state, the picture always shows the starting room,
-even after Gemini says the painting was taken down. Both versions share a
-minimal one-screen layout with a hint and a restart button next to the header.
+even after Gemini says the painting was taken down. Both versions share the
+same full-screen game layout: the room fills the window, actions appear next
+to the clicked object, the latest story line is shown as a subtitle and the
+full conversation opens from a 📜 button.
 
 This version was quick to build and pleasant to play, because the model
 handles any phrasing and writes atmospheric descriptions. Testing it with the
@@ -106,9 +108,9 @@ storytelling**. Every message goes through a pipeline:
    opens), so the picture can never disagree with the engine. Clicking an
    object selects it, and context buttons (Examine, Take, Look behind, Open,
    Spin, a clickable keypad, *Use held item here*) send structured actions straight to
-   the engine; typed commands still go through the parser. An inventory row
-   lets the player hold an item and click where to use it, header chips show
-   the live state, and a collapsed sidebar holds the raw JSON state and a
+   the engine; typed commands still go through the parser. Inventory slots let
+   the player hold an item and click where to use it, every action flashes a
+   ✅/❌ engine check, and a collapsed sidebar holds the raw JSON state and a
    debug view of the last parsed action.
    The debug view was very useful for explaining and testing the system.
 
