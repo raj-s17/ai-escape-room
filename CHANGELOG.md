@@ -1,5 +1,15 @@
 # Changelog
 
+## Version 3 - Multiplayer
+- New `v3/` app on top of Version 2: a lobby with 4-letter room codes; friends join from their own browser.
+- 🗝️ The Locked Library, multiplayer: one V2 engine shared by the crew (same rules, parser, narrator and room), shared team inventory, everyone's actions in one story, a team chat.
+- 💣 Bomb Squad, a second theme: co-op defusal where each seat is missing a sense (🕶️ Blind holds the tools, 🎧 Deaf sees the bomb, 🤐 Mute has the manual and only hand signals). Senses are enforced on the server for both the screens and the AI prompts; four modules, strikes, timer, optional chaos (power cuts, radio static). The Blind player can also type instructions ("cut wire 2"), and the Mute player can type signs ("wires 4", "up", "yes"), which are shown as hand signals, never as speech. If Gemini's Blind player ignores a plain order, the rule parser's reading is used. The rule-based Mute player understands the Deaf player's everyday typed descriptions ("5 wires: green black red red white, the light is red", "keypad 11 minus 2, blue light"), not only the callout buttons.
+- Empty seats are played by Gemini Flash (JSON, validated by Python) with a rule-based fallback; AI turns run in a background worker per room; after a `429` the rules take over until the rate limit resets.
+- Same look as V1/V2: built from `ui_style.py` (header with a blue **V3** badge and icon buttons, room scene with floating actions, fading story panel, inventory slots, keypad popover) and the shared dark library theme; one screen without scrolling at 1366x768, 1440x900 and 1920x1080.
+- Gemini robustness: a 20 s limit per request (an overloaded server could hang for minutes), two short retries on `503 UNAVAILABLE`, and a used-up daily free quota is recognised and waited out instead of retried every 2 minutes (narration and AI teammates use the rules meanwhile).
+- `ui_style.badge()` gained a V3 entry and an optional title (V1/V2 unchanged).
+- 118 new tests (142 total). README: V3 section, screenshots, project structure.
+
 ## Fix: stale layout on a running server
 - `v1/app.py` and `v2/app.py` reload the shared `ui_style.py` and `room_renderer.py` on every run. They live outside the app folders, so Streamlit did not hot-reload them and a running server could mix the new page with old styles.
 
