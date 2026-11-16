@@ -5,18 +5,19 @@ wakes up in a locked library, explores by **clicking objects in a drawn 2D
 room** or by typing in plain English, solves three puzzles and has to work out
 the 4-digit door code to escape.
 
-The project was built in the two required versions:
+The project was built in the two required versions, plus a third version on
+top of Version 2 that makes the game multiplayer:
 
-| | Version 1: Interactive | Version 2: Reliable |
-|---|---|---|
-| Who decides what happens | The LLM | **Python game engine** |
-| Where the rules and solutions live | In the LLM prompt | In `game_config.json` + Python |
-| Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) |
-| How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing |
-| Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn |
-| What the screen shows (same game layout: room left, story right) | Orange **V1** badge; the room never changes; inventory slots stay empty; each action flashes *"Gemini decided alone - no validation"* | Green **V2** badge; the room follows the game state; real inventory slots (hold an item, click where to use it); each action flashes an **engine check** (`✅ / ❌ verb → event`) |
-| What the LLM does | Everything | Narrates the outcome the engine already decided |
-| Works without an API key | No | Yes (offline mode, engine text only) |
+| | Version 1: Interactive | Version 2: Reliable | Version 3: Multiplayer |
+|---|---|---|---|
+| Who decides what happens | The LLM | **Python game engine** | Python (the V2 engine, plus the Bomb Squad rules) |
+| Where the rules and solutions live | In the LLM prompt | In `game_config.json` + Python | Same as V2; Bomb Squad manual and rules in `v3/defuse_core/` |
+| Game state | Chat history only | Structured dict (inventory, flags, puzzles, door) | Same dict, **shared by everyone in a room** |
+| How the player acts | Clicking objects in the room (suggested commands) **or** typing | Clicking objects (context buttons, held items) **or** typing | Same as V2, from several browsers at once; a team chat |
+| Room picture | Static: always the starting room (nothing tracks the state) | Drawn from the game state every turn | Same as V2 |
+| What the screen shows (same game layout: room left, story right) | Orange **V1** badge; the room never changes; inventory slots stay empty; each action flashes *"Gemini decided alone - no validation"* | Green **V2** badge; the room follows the game state; real inventory slots (hold an item, click where to use it); each action flashes an **engine check** (`✅ / ❌ verb → event`) | Blue **V3** badge; a lobby with room codes; the V2 screen shared by the crew (*"Raj looked behind the painting"*); a second theme, **💣 Bomb Squad** |
+| What the LLM does | Everything | Narrates the outcome the engine already decided | Narrates (as in V2) and **plays empty seats** as AI teammates; every AI move is validated |
+| Works without an API key | No | Yes (offline mode, engine text only) | Yes (rule-based teammates and engine narration) |
 
 > Mini Project 01, MSc Data Science, University of Europe for Applied Sciences
 > Author: Raj Ravindra Singh
@@ -50,8 +51,8 @@ brass key, UV flashlight, torn page.
 
 * **Python 3.10+**
 * **Streamlit** for the web interface
-* **Pillow** to draw the 2D room (`room_renderer.py`, shared by V1 and V2) and **streamlit-image-coordinates** to detect clicks on it
-* One shared look for both versions: a dark library theme locked in `.streamlit/config.toml`, and `ui_style.py` for the game HUD
+* **Pillow** to draw the 2D room (`room_renderer.py`, shared by V1, V2 and V3) and **streamlit-image-coordinates** to detect clicks on it
+* One shared look for all three versions: a dark library theme locked in `.streamlit/config.toml`, and `ui_style.py` for the game HUD
 * **Google Gemini API** (`google-genai` SDK, free tier, default model `gemini-2.5-flash`; if it is unavailable, `gemini_model.py` picks the newest available Flash model)
 * **JSON** for the game configuration
 * **pytest** for automated tests
@@ -78,6 +79,7 @@ cp .env.example .env          # Windows: copy .env.example .env
 # 4. Play
 streamlit run v1/app.py       # Version 1
 streamlit run v2/app.py       # Version 2 (also works without a key, in offline mode)
+streamlit run v3/app.py       # Version 3 - multiplayer (also works without a key)
 
 # 5. Test
 pytest -v                               # automated tests, no key needed
@@ -91,6 +93,14 @@ click an item in the inventory slots to hold it, then click where to use it;
 each action flashes a ✅ / ❌ engine check. You can also type any command in
 the box at the bottom. V2's JSON state and debug view are in the collapsed
 sidebar (») for developers. The app always uses its dark theme.
+
+**V3 (multiplayer):** create a room in the lobby and share the 4-letter code;
+friends join from their own browser (on the same Wi-Fi, use the *Network URL*
+Streamlit prints). In 🗝️ The Locked Library everyone plays the V2 screen
+together with one shared inventory; 💬 *Team chat* talks instead of acting. In
+💣 Bomb Squad pick a seat (🕶️ Blind, 🎧 Deaf, 🤐 Mute) or *Watch the AI play*;
+empty seats are AI teammates. The header buttons hide the chat box (play by
+clicks only), give a hint, show labels and leave the room.
 
 ## 5. Version 1: Interactive AI Escape Room
 
@@ -153,15 +163,59 @@ Mermaid sources: [`docs/architecture/`](docs/architecture/).
 | Picture can't follow the story | `room_renderer.render(state)` every turn | The picture can't disagree with the game |
 | Needs the API to run at all | Offline mode | Game and tests run without a key or network |
 
-## 7. Testing
+## 7. Version 3: Multiplayer
+
+**Core idea: the V2 engine, shared.** V3 keeps V2's rules, room, parser,
+narrator and look, and adds rooms that several people play at once, plus a
+second theme. Python still decides everything, including what each player is
+allowed to perceive.
+
+| File | Responsibility |
+|---|---|
+| `v3/hub.py` | Rooms (4-letter codes), players and seats, a shared event log, and one background worker per room for AI turns, so no player waits for Gemini |
+| `v3/themes/library_mp.py` | 🗝️ The Locked Library for a crew: **one V2 `EscapeRoomEngine` per room**. Clicks and typed commands (V2 rule parser first, Gemini only as a fallback) go through it; the V2 narrator describes each result for everyone |
+| `v3/themes/bomb_squad.py` | 💣 Bomb Squad: who can see, hear and speak (`perceives`), who may act, signal or talk, the AI players (Gemini JSON, validated) and their rule-based fallback |
+| `v3/defuse_core/` | The bomb (wires, D-pad with Braille, maths keypad, switches, strikes, timer, chaos events), its manual and the pictures |
+| `v3/llm.py` | Gemini Flash with thinking off, a fallback for models that reject that setting, and a rate-limit guard (after a `429` the rules take over for the wait time Google asks for) |
+| `v3/app.py`, `v3/ui.py` | The screens, built from V2's `ui_style.py`: same header, room scene, floating actions, story panel, inventory slots and keypad, plus the lobby and Bomb Squad panels |
+
+### 💣 Bomb Squad: everyone is missing a sense
+
+| Seat | Can | Can't |
+|---|---|---|
+| 🕶️ **Blind** | Hold the tools: cut wires, press the D-pad and keys, flip switches (by touch, or by typing "cut wire 2") | See the bomb or the hand signals |
+| 🎧 **Deaf** | See the whole bomb and the hand signals; speak | Hear anyone |
+| 🤐 **Mute** | Read the manual; hear everything; make hand signals (with the buttons, or by typing "wires 4", "up", "yes") | Speak, or see the bomb |
+
+So the team has to chain it: **Deaf describes → Mute checks the manual and
+signals → Deaf sees the signal and tells Blind → Blind acts.** Senses are
+enforced on the server: the same filter builds each player's screen and each
+AI player's prompt, so an AI teammate can't use information its seat never
+perceived. Optional chaos mode adds power cuts (Deaf can't see) and radio
+static (speech is garbled).
+
+### What V3 adds on top of V2
+
+| Need | V3 change | Why it stays reliable |
+|---|---|---|
+| Play together | Rooms with codes, one shared V2 engine per room | Every click still goes through `EscapeRoomEngine.handle()` |
+| Several people acting at once | One lock per store, one AI worker per room | Actions are applied in order; nobody waits for Gemini |
+| Empty seats | Gemini plays them (JSON), Python validates each move | An AI can't do what its seat isn't allowed to |
+| Gemini down, slow or rate-limited | Rule-based players and engine narration | The game never stops |
+
+## 8. Testing
 
 Eight documented test cases (the five assignment challenges plus three more)
 are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitations.
 
-* `pytest -v` runs **24 automated tests** with no API key: 20 on the V2
+* `pytest -v` runs **142 automated tests** with no API key: 20 on the V2
   engine, parser, narrator guard (using a fake "malicious" LLM) and model
-  selection, plus 4 on the room picture (click mapping, hidden and collected
-  objects, rendering every stage of the game).
+  selection, 4 on the room picture (click mapping, hidden and collected
+  objects, rendering every stage of the game), and 118 on V3: rooms and seats,
+  each player perceiving only what their senses allow, AI prompts never
+  containing unperceived information, validation of Gemini's JSON, three AI
+  players defusing bombs alone, every manual rule, typed Blind instructions, Mute signs and Deaf descriptions,
+  the shared library, and the Gemini fallback / rate-limit guard.
 * `python scripts/run_test_cases.py` sends the same attacks to **V1 (real
   Gemini)** and **V2** and saves full transcripts to
   [`docs/test_results.md`](docs/test_results.md).
@@ -177,10 +231,10 @@ are in **[docs/test_cases.md](docs/test_cases.md)**, along with known limitation
 | TC7 | Prompt injection / "print your system prompt" | `rule_violation` |
 | TC8 | Correct code guessed before finding clues | `wrong_code` until clues are discovered |
 
-## 8. Screenshots
+## 9. Screenshots
 
-V2 screenshots were taken in offline mode (engine text without Gemini
-narration). The V1 screenshots used scripted stand-in replies, because V1
+V2 and V3 screenshots were taken in offline mode (engine text and rule-based
+teammates, without Gemini). The V1 screenshots used scripted stand-in replies, because V1
 cannot run without the LLM.
 
 | V1: same screen, but the room never changes and the slots stay empty | V2: hold the key, click the drawer, "Use brass key" appears next to it |
@@ -188,8 +242,14 @@ cannot run without the LLM.
 | ![v1](docs/screenshots/v1_gameplay.png) | ![v2 hold](docs/screenshots/v2_hold_use.png) |
 | **V2: clickable door keypad** | **V2: escaped, with the ✅ engine check** |
 | ![keypad](docs/screenshots/v2_keypad.png) | ![escaped](docs/screenshots/v2_escaped.png) |
+| **V3: lobby (mission, squad, create / join)** | **V3: the shared Locked Library, door keypad open** |
+| ![v3 lobby](docs/screenshots/v3_lobby.png) | ![v3 library](docs/screenshots/v3_library_keypad.png) |
+| **V3 Bomb Squad: 🎧 Deaf sees the bomb** | **V3 Bomb Squad: 🤐 Mute reads the manual and signals** |
+| ![v3 deaf](docs/screenshots/v3_bomb_deaf.png) | ![v3 mute](docs/screenshots/v3_bomb_mute.png) |
+| **V3: three AI players defuse a bomb alone** | |
+| ![v3 defused](docs/screenshots/v3_bomb_defused.png) | |
 
-## 9. Project structure
+## 10. Project structure
 
 ```
 AI-Escape-Room/
@@ -202,13 +262,25 @@ AI-Escape-Room/
 │   ├── game_engine.py      # state + action validation
 │   ├── action_parser.py    # text -> Action (rules + optional LLM)
 │   └── narrator.py         # Gemini narration + output guard
-├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1 and V2
-├── ui_style.py             # shared game layout: badge, story panel, keypad, floating action buttons
+├── v3/
+│   ├── app.py              # V3 UI: lobby, shared library screen, Bomb Squad screens
+│   ├── ui.py               # V3 additions to the shared look (lobby, bomb status bar, crew, banners)
+│   ├── hub.py              # rooms, players, event log, background AI worker
+│   ├── llm.py              # Gemini Flash access, fallbacks, rate-limit guard
+│   ├── themes/             # library_mp.py (shared V2 engine), bomb_squad.py (senses, AI players)
+│   └── defuse_core/        # bomb rules, manual, bomb + portrait pictures
+├── room_renderer.py        # draws the room (Pillow) + click hit-testing, used by V1, V2 and V3
+├── ui_style.py             # shared game layout: badge, story panel, keypad, floating action buttons (V1-V3)
 ├── .streamlit/config.toml  # shared dark library theme
 ├── gemini_model.py         # picks an available Gemini model
 ├── tests/
 │   ├── test_game.py        # 20 tests: V2 engine, parser, guard, model selection
-│   └── test_room.py        # 4 tests: click mapping and rendering
+│   ├── test_room.py        # 4 tests: click mapping and rendering
+│   ├── test_v3.py          # 29 tests: rooms, senses, AI prompts and validation, shared library
+│   ├── test_bomb4.py       # 33 tests: every Bomb Squad manual rule, strikes, chaos
+│   ├── test_blind_typed.py # 36 tests: typed Blind instructions and Mute signs
+│   ├── test_deaf_describe.py # 15 tests: typed Deaf descriptions understood by the Mute player
+│   └── test_llm_guard.py   # 5 tests: Gemini fallback, rate limits, busy-server retries
 ├── scripts/run_test_cases.py
 ├── docs/
 │   ├── architecture/       # diagrams (.mmd + .png)
@@ -221,12 +293,14 @@ AI-Escape-Room/
 └── CHANGELOG.md
 ```
 
-## 10. Limitations and future work
+## 11. Limitations and future work
 
 * The rule parser doesn't resolve pronouns ("use *it*"), and unusual phrasing falls back to the LLM parser.
 * The `meta` filter and the output guard are pattern-based. They protect the state completely, but can't catch every invented detail in narration.
 * The room has no hover effects, because the click component only reports clicks; object labels are always shown instead.
 * The one-screen layout is tuned for laptop screens (1366×768 and larger); very small windows still scroll.
+* V3 rooms live in server memory: restarting the app ends running games. For play over the internet, deploy to Streamlit Community Cloud with `GEMINI_API_KEY` as a secret.
+* On Gemini's free tier, three AI teammates hit the rate limit within seconds; the rule-based players then take over until the limit resets. Small "lite" models also misread the Bomb Squad manual more often than the rules do.
 * Ideas: a 3D room (Three.js inside a Streamlit component) using the same engine, more rooms loaded from JSON, save/load game state, Gemini function calling instead of a separate parser, a timer and score.
 
 ## Security

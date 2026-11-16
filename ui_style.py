@@ -21,7 +21,8 @@ import re
 import streamlit as st
 
 GOLD = "217, 163, 91"
-BADGE = {1: ("V1", "rgba(192,102,28,.92)", "LLM only"), 2: ("V2", "rgba(46,160,90,.92)", "Reliable")}
+BADGE = {1: ("V1", "rgba(192,102,28,.92)", "LLM only"), 2: ("V2", "rgba(46,160,90,.92)", "Reliable"),
+         3: ("V3", "rgba(64,112,196,.92)", "Multiplayer")}
 IMG_W, IMG_H = 960, 600                     # room_renderer size (16:10)
 # Scene height: as tall as the window allows (minus header + bottom row), but leave >= 360px for the story.
 SCENE_H = "min(calc(100vh - 190px), calc((100vw - 460px) / 1.6))"
@@ -82,10 +83,10 @@ def apply_style() -> None:
     st.html(CSS)
 
 
-def badge(version: int) -> None:
+def badge(version: int, title: str = "🗝️ The Locked Library") -> None:
     tag, colour, word = BADGE[version]
     st.html(f'<div class="ll-badge"><b style="background:{colour}">{tag}</b>'
-            f'<span>🗝️ The Locked Library</span><i>{word}</i></div>')
+            f'<span>{html.escape(title)}</span><i>{word}</i></div>')
 
 
 def place_actions(box: tuple[int, int, int, int]) -> None:
